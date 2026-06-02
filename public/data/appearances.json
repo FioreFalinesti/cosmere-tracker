@@ -1,0 +1,22 @@
+[
+  { "characterId": "raoden", "bookId": "elantris", "role": "major" },
+  { "characterId": "sarene", "bookId": "elantris", "role": "major" },
+  { "characterId": "hrathen", "bookId": "elantris", "role": "major" },
+  { "characterId": "galladon", "bookId": "elantris", "role": "major" },
+  { "characterId": "karata", "bookId": "elantris", "role": "major" },
+  { "characterId": "shaor", "bookId": "elantris", "role": "minor" },
+  { "characterId": "aanden", "bookId": "elantris", "role": "minor" },
+  { "characterId": "dashe", "bookId": "elantris", "role": "minor" },
+  { "characterId": "dilaf", "bookId": "elantris", "role": "major" },
+  { "characterId": "roial", "bookId": "elantris", "role": "major" },
+  { "characterId": "eondel", "bookId": "elantris", "role": "major" },
+  { "characterId": "iadon", "bookId": "elantris", "role": "major" },
+  { "characterId": "kiin", "bookId": "elantris", "role": "major" },
+  { "characterId": "lukel", "bookId": "elantris", "role": "minor" },
+  { "characterId": "shuden", "bookId": "elantris", "role": "minor" },
+  { "characterId": "telrii", "bookId": "elantris", "role": "major" },
+  { "characterId": "omin", "bookId": "elantris", "role": "minor" },
+  { "characterId": "seinalan", "bookId": "elantris", "role": "minor" },
+  { "characterId": "eventeo", "bookId": "elantris", "role": "minor" },
+  { "characterId": "ashe", "bookId": "elantris", "role": "major" }
+]

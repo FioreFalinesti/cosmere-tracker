@@ -1,0 +1,10 @@
+html {
+  background-color: theme('colors.blue.950');
+  color: #dde4f5;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.surface.700') transparent;
+}
