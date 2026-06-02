@@ -7,21 +7,21 @@
       <div class="bg-surface-800 border border-surface-700 rounded-xl divide-y divide-surface-700">
         <div
           v-for="planet in planets"
-          :key="planet.id"
+          :key="planet.slug"
           class="flex items-center gap-4 px-5 py-3"
         >
           <div
             class="w-4 h-4 rounded-full shrink-0"
-            :style="{ background: getColor(planet.id), boxShadow: `0 0 6px 1px ${getColor(planet.id)}55` }"
+            :style="{ background: getColor(planet.slug), boxShadow: `0 0 6px 1px ${getColor(planet.slug)}55` }"
           />
           <span class="flex-1 text-sm text-blue-100">{{ planet.name }}</span>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-indigo-500 font-mono">{{ getColor(planet.id) }}</span>
+            <span class="text-xs text-indigo-500 font-mono">{{ getColor(planet.slug) }}</span>
             <input
               type="color"
-              :value="getColor(planet.id)"
+              :value="getColor(planet.slug)"
               class="color-swatch"
-              @input="e => setColor(planet.id, e.target.value)"
+              @input="e => setColor(planet.slug, e.target.value)"
             />
           </div>
         </div>
@@ -31,9 +31,7 @@
 </template>
 
 <script setup>
-import { planets } from '~/composables/usePlanetSettings'
-
-const { init, getColor, setColor } = usePlanetSettings()
+const { planets, init, getColor, setColor } = usePlanetSettings()
 await init()
 </script>
 

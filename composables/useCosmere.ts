@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
 
 export interface Book {
-  id: string
+  slug: string
   title: string
   series: string
-  releaseYear: number
-  order: number
+  published_on: string
+  release_order: number
   read: boolean
 }
 
@@ -39,12 +39,13 @@ const loaded = ref(false)
 export function useCosmere(): CosmereStore {
   async function load() {
     if (loaded.value) return
-    const [b, c, a] = await Promise.all([
-      $fetch<Book[]>('/data/books.json'),
+    const { client } = useSupabase()
+    const [{ data: booksData }, c, a] = await Promise.all([
+      client.from('books').select('*').order('release_order'),
       $fetch<Character[]>('/data/characters.json'),
       $fetch<Appearance[]>('/data/appearances.json'),
     ])
-    books.value = b
+    books.value = (booksData ?? []).map(b => ({ ...b, slug: b.slug?.trim() }))
     characters.value = c
     appearances.value = a
     loaded.value = true

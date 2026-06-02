@@ -1,6 +1,6 @@
 import { initSupabase } from '~/composables/useSupabase'
 
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
-  await initSupabase(config.public.supabaseUrl, config.public.supabaseKey)
+  initSupabase(config.public.supabaseUrl, config.public.supabaseKey)
 })

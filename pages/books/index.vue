@@ -8,9 +8,9 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       <BookCard
         v-for="book in books"
-        :key="book.id"
+        :key="book.slug"
         :book="book"
-        :character-count="characterCountFor(book.id)"
+        :character-count="characterCountFor(book.slug)"
       />
     </div>
   </div>

@@ -1,8 +1,6 @@
 <template>
   <div class="relative h-full">
     <VueFlow
-      :nodes="visibleNodes"
-      :edges="visibleEdges"
       :nodes-connectable="false"
       :edges-updatable="false"
       :min-zoom="0.25"
@@ -10,6 +8,7 @@
       class="cosmere-map"
       @node-click="onNodeClick"
     >
+      <MapSync :nodes="visibleNodes" :edges="visibleEdges" />
       <Background
         variant="dots"
         :gap="40"
@@ -24,6 +23,7 @@
       <div v-if="visibleNodes.length === 0" class="absolute inset-0 flex items-center justify-center pointer-events-none">
         <p class="text-indigo-700 text-sm">Check a book in the sidebar to reveal its world.</p>
       </div>
+
     </VueFlow>
 
     <!-- Right panel -->
@@ -59,13 +59,12 @@
 <script setup>
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
-import { planets } from '~/composables/usePlanetSettings'
 
 definePageMeta({ layout: 'map' })
 
 const { books, load } = useCosmere()
-const { readIds, init: initRead } = useReadBooks()
-const { init: initPlanets, nodeData, overrides } = usePlanetSettings()
+const { readSlugs, init: initRead } = useReadBooks()
+const { planets, init: initPlanets, nodeData } = usePlanetSettings()
 
 await load()
 await initRead()
@@ -95,17 +94,17 @@ const allEdges = [
 
 const visibleWorldIds = computed(() => new Set(
   Object.entries(worldBooks)
-    .filter(([, bookIds]) => bookIds.some(id => readIds.value.has(id)))
+    .filter(([, bookIds]) => bookIds.some(id => readSlugs.value.includes(id)))
     .map(([worldId]) => worldId)
 ))
 
 const visibleNodes = computed(() =>
-  planets
-    .filter(p => visibleWorldIds.value.has(p.id))
+  planets.value
+    .filter(p => visibleWorldIds.value.has(p.slug))
     .map(p => ({
-      id: p.id,
+      id: p.slug,
       type: 'planet',
-      position: p.position,
+      position: { x: p.map_x, y: p.map_y },
       data: nodeData(p),
     }))
 )
@@ -116,11 +115,13 @@ const visibleEdges = computed(() =>
   )
 )
 
+
 const selectedPlanet = ref(null)
 
 function onNodeClick({ node }) {
   selectedPlanet.value = node.data
 }
+
 </script>
 
 <style>

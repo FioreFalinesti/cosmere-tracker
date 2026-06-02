@@ -19,15 +19,15 @@
     </h2>
 
     <div class="flex flex-col gap-3">
-      <template v-for="{ book, appearance } in allAppearances" :key="book.id">
+      <template v-for="{ book, appearance } in allAppearances" :key="book.slug">
         <NuxtLink
-          v-if="isRead(book.id)"
-          :to="`/books/${book.id}`"
+          v-if="isRead(book.slug)"
+          :to="`/books/${book.slug}`"
           class="group flex items-center justify-between bg-surface-800 border border-surface-700 rounded-xl px-5 py-4 hover:border-accent-500/50 hover:bg-surface-700 transition-all"
         >
           <div>
             <p class="font-medium text-blue-50 group-hover:text-accent-400 transition-colors">{{ book.title }}</p>
-            <p class="text-sm text-indigo-400">{{ book.series }} · {{ book.releaseYear }}</p>
+            <p class="text-sm text-indigo-400">{{ book.series }} · {{ book.published_on.slice(0, 4) }}</p>
           </div>
           <RoleBadge :role="appearance.role" />
         </NuxtLink>
@@ -38,7 +38,7 @@
         >
           <div>
             <p class="font-medium text-indigo-300">{{ book.title }}</p>
-            <p class="text-sm text-indigo-500">{{ book.series }} · {{ book.releaseYear }}</p>
+            <p class="text-sm text-indigo-500">{{ book.series }} · {{ book.published_on.slice(0, 4) }}</p>
           </div>
           <span class="text-xs text-indigo-500 italic">Unread</span>
         </div>
@@ -62,9 +62,9 @@ const allAppearances = computed(() =>
     .filter(a => a.characterId === route.params.id)
     .map(a => ({
       appearance: a,
-      book: books.value.find(b => b.id === a.bookId),
+      book: books.value.find(b => b.slug === a.bookId),
     }))
     .filter(x => x.book)
-    .sort((a, b) => a.book.order - b.book.order)
+    .sort((a, b) => a.book.release_order - b.book.order)
 )
 </script>

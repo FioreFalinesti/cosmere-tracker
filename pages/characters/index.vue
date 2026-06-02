@@ -35,8 +35,8 @@
         <div class="flex flex-wrap gap-1.5 mt-auto">
           <NuxtLink
             v-for="entry in readBooksFor(character.id)"
-            :key="entry.book.id"
-            :to="`/books/${entry.book.id}`"
+            :key="entry.book.slug"
+            :to="`/books/${entry.book.slug}`"
             class="text-xs bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-blue-100 px-2 py-0.5 rounded transition-colors"
             @click.stop
           >
@@ -82,16 +82,16 @@ const displayedCharacters = computed(() => {
 function readBooksFor(characterId) {
   return appearances.value
     .filter(a => a.characterId === characterId)
-    .map(a => ({ book: books.value.find(b => b.id === a.bookId) }))
-    .filter(x => x.book && isRead(x.book.id))
+    .map(a => ({ book: books.value.find(b => b.slug === a.bookId) }))
+    .filter(x => x.book && isRead(x.book.slug))
 }
 
 function unreadBooksFor(characterId) {
   return appearances.value
     .filter(a => a.characterId === characterId)
     .filter(a => {
-      const book = books.value.find(b => b.id === a.bookId)
-      return book && !isRead(book.id)
+      const book = books.value.find(b => b.slug === a.bookId)
+      return book && !isRead(book.slug)
     }).length
 }
 </script>

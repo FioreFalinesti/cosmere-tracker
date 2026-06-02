@@ -5,16 +5,37 @@
     </NuxtLink>
 
     <div class="mb-8">
-      <div class="flex items-start gap-3 mb-2 flex-wrap">
+      <div class="flex items-start gap-3 mb-4 flex-wrap">
         <h1 class="text-3xl font-bold text-blue-50">{{ book.title }}</h1>
-        <span v-if="isRead(book.id)" class="mt-1 text-xs bg-violet-900/40 text-violet-300 ring-1 ring-violet-700/40 px-2 py-0.5 rounded">
+        <span v-if="isRead(book.slug)" class="mt-1 text-xs bg-violet-900/40 text-violet-300 ring-1 ring-violet-700/40 px-2 py-0.5 rounded">
           Read
         </span>
       </div>
-      <p class="text-indigo-400">{{ book.series }} · {{ book.releaseYear }}</p>
+
+      <dl class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-surface-800 border border-surface-700 rounded-xl px-4 py-3">
+          <dt class="text-xs text-indigo-500 uppercase tracking-widest mb-1">Published</dt>
+          <dd class="text-sm font-medium text-blue-100">{{ formatDate(book.published_on) }}</dd>
+        </div>
+        <div class="bg-surface-800 border border-surface-700 rounded-xl px-4 py-3">
+          <dt class="text-xs text-indigo-500 uppercase tracking-widest mb-1">Series</dt>
+          <dd class="text-sm font-medium text-blue-100">{{ book.series }}</dd>
+        </div>
+        <div class="bg-surface-800 border border-surface-700 rounded-xl px-4 py-3">
+          <dt class="text-xs text-indigo-500 uppercase tracking-widest mb-1">Cosmere #</dt>
+          <dd class="text-sm font-medium text-blue-100">{{ book.release_order }}</dd>
+        </div>
+        <div class="bg-surface-800 border border-surface-700 rounded-xl px-4 py-3">
+          <dt class="text-xs text-indigo-500 uppercase tracking-widest mb-1">Characters</dt>
+          <dd class="text-sm font-medium text-blue-100">
+            <span v-if="isRead(book.slug)">{{ bookAppearances.length }}</span>
+            <span v-else class="text-indigo-600 italic">—</span>
+          </dd>
+        </div>
+      </dl>
     </div>
 
-    <div v-if="!isRead(book.id)" class="bg-surface-800 border border-surface-700 rounded-xl p-8 text-center">
+    <div v-if="!isRead(book.slug)" class="bg-surface-800 border border-surface-700 rounded-xl p-8 text-center">
       <p class="text-indigo-300 text-lg mb-1">You haven't read this book yet.</p>
       <p class="text-indigo-500 text-sm">Character details are hidden to avoid spoilers.</p>
     </div>
@@ -72,7 +93,7 @@ const { books, characters, appearances, load } = useCosmere()
 const { isRead } = useReadBooks()
 await load()
 
-const book = computed(() => books.value.find(b => b.id === route.params.id))
+const book = computed(() => books.value.find(b => b.slug === route.params.id))
 
 const roleFilters = [
   { value: 'major', label: 'Major' },
