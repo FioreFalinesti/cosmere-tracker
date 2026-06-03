@@ -1,48 +1,44 @@
-import { collection, query, where, doc, updateDoc, getDocs, onSnapshot } from 'firebase/firestore'
+const STORAGE_KEY = 'cosmere-tracker:read-books'
 
 const readSlugs = ref([])
 const initialized = ref(false)
 
 export function useReadBooks() {
-  async function init() {
+  function init() {
     if (initialized.value) return
-    const db = useFirestore()
-
-    const snap = await getDocs(query(collection(db, 'books'), where('read', '==', true)))
-    readSlugs.value = snap.docs.map(d => d.id)
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      readSlugs.value = stored ? JSON.parse(stored) : []
+    } catch {
+      readSlugs.value = []
+    }
     initialized.value = true
-
-    // Real-time updates after initial load
-    onSnapshot(
-      query(collection(db, 'books'), where('read', '==', true)),
-      (snap) => { readSlugs.value = snap.docs.map(d => d.id) },
-      (err) => console.error('[readBooks snapshot]', err)
-    )
   }
 
-  async function toggle(slug) {
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(readSlugs.value))
+  }
+
+  function toggle(slug) {
     const wasRead = readSlugs.value.includes(slug)
     readSlugs.value = wasRead
       ? readSlugs.value.filter(s => s !== slug)
       : [...readSlugs.value, slug]
-    const db = useFirestore()
-    await updateDoc(doc(db, 'books', slug), { read: !wasRead })
+    save()
   }
 
   function isRead(slug) {
     return readSlugs.value.includes(slug)
   }
 
-  async function selectAll(slugs) {
+  function selectAll(slugs) {
     readSlugs.value = [...slugs]
-    const db = useFirestore()
-    await Promise.all(slugs.map(slug => updateDoc(doc(db, 'books', slug), { read: true })))
+    save()
   }
 
-  async function unselectAll(slugs) {
+  function unselectAll() {
     readSlugs.value = []
-    const db = useFirestore()
-    await Promise.all(slugs.map(slug => updateDoc(doc(db, 'books', slug), { read: false })))
+    save()
   }
 
   return { readSlugs, init, toggle, isRead, selectAll, unselectAll }

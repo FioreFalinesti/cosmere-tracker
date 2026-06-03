@@ -7,7 +7,7 @@ export interface Book {
   series: string
   published_on: string
   release_order: number
-  read: boolean
+  read?: boolean
   planets: string[]
 }
 

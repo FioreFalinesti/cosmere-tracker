@@ -3,7 +3,6 @@
     <VueFlow
       :nodes-connectable="false"
       :edges-updatable="false"
-      :nodes-draggable="editPositions"
       :min-zoom="0.25"
       :max-zoom="4"
       class="cosmere-map"
@@ -144,6 +143,7 @@ const visibleNodes = computed(() => {
       id: `system-${system.slug}`,
       type: 'system',
       position: { x: system.map_x, y: system.map_y },
+      draggable: editPositions.value,
       style: { width: `${size}px`, height: `${size}px`, zIndex: -1 },
       data: { name: system.name, starName: system.star_name ?? null, color, size, slug: system.slug, planetCount: allMembers.length },
     })
@@ -164,6 +164,7 @@ const visibleNodes = computed(() => {
       planetNodes.push({
         id: planet.slug,
         type: 'planet',
+        draggable: false,
         position: {
           x: sysCX + orbitR * Math.cos(angle) - pSize / 2,
           y: sysCY + orbitR * Math.sin(angle) - pSize / 2,
