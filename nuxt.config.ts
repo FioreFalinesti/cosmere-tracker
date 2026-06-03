@@ -1,8 +1,12 @@
 export default defineNuxtConfig({
   runtimeConfig: {
     public: {
-      supabaseUrl: '',
-      supabaseKey: '',
+      firebaseApiKey: '',
+      firebaseAuthDomain: '',
+      firebaseProjectId: '',
+      firebaseStorageBucket: '',
+      firebaseMessagingSenderId: '',
+      firebaseAppId: '',
     },
   },
   compatibilityDate: '2025-07-15',
@@ -16,12 +20,5 @@ export default defineNuxtConfig({
   ],
   devServer: {
     port: 1616,
-  },
-  vite: {
-    resolve: {
-      alias: {
-        '@supabase/functions-js': '@supabase/functions-js/dist/main/index.js',
-      },
-    },
   },
 })

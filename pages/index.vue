@@ -3,12 +3,13 @@
     <VueFlow
       :nodes-connectable="false"
       :edges-updatable="false"
+      :nodes-draggable="editPositions"
       :min-zoom="0.25"
       :max-zoom="4"
       class="cosmere-map"
       @node-click="onNodeClick"
     >
-      <MapSync :nodes="visibleNodes" :edges="visibleEdges" />
+      <MapSync :nodes="visibleNodes" :edges="visibleEdges" :edit-positions="editPositions" />
       <Background
         variant="dots"
         :gap="40"
@@ -18,6 +19,9 @@
       />
       <template #node-planet="nodeProps">
         <PlanetNode v-bind="nodeProps" />
+      </template>
+      <template #node-system="nodeProps">
+        <SystemNode v-bind="nodeProps" />
       </template>
 
       <div v-if="visibleNodes.length === 0" class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -34,15 +38,23 @@
       >
         <div class="flex items-center justify-between px-5 py-4 border-b border-surface-700">
           <div class="flex items-center gap-3">
-            <div
-              class="w-3 h-3 rounded-full shrink-0"
-              :style="{ background: selectedPlanet.color, boxShadow: `0 0 6px 2px ${selectedPlanet.color}55` }"
-            />
+            <label class="relative cursor-pointer group">
+              <div
+                class="w-4 h-4 rounded-full shrink-0 ring-2 ring-transparent group-hover:ring-white/30 transition-all"
+                :style="{ background: selectedPlanet.color, boxShadow: `0 0 6px 2px ${selectedPlanet.color}55` }"
+              />
+              <input
+                type="color"
+                :value="selectedPlanet.color"
+                class="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                @input="e => setColor(selectedPlanet.slug, e.target.value)"
+              />
+            </label>
             <h2 class="text-base font-semibold text-blue-50">{{ selectedPlanet.name }}</h2>
           </div>
           <button
             class="text-indigo-400 hover:text-blue-100 transition-colors p-1 -mr-1"
-            @click="selectedPlanet = null"
+            @click="selectedSlug = null"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -59,16 +71,20 @@
 <script setup>
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
+import { averageHexColors } from '~/utils/colorUtils'
 
 definePageMeta({ layout: 'map' })
 
 const { books, load } = useCosmere()
 const { readSlugs, init: initRead } = useReadBooks()
-const { planets, init: initPlanets, nodeData } = usePlanetSettings()
+const { planets, init: initPlanets, nodeData, setColor, batchUpdatePositions } = usePlanetSettings()
+const { systems, init: initSystems } = useSystemSettings()
+const { editPositions } = useMapState()
 
 await load()
 await initRead()
 await initPlanets()
+await initSystems()
 
 const worldBooks = {
   sel:      ['elantris', 'the-emperors-soul'],
@@ -98,16 +114,45 @@ const visibleWorldIds = computed(() => new Set(
     .map(([worldId]) => worldId)
 ))
 
-const visibleNodes = computed(() =>
-  planets.value
-    .filter(p => visibleWorldIds.value.has(p.slug))
-    .map(p => ({
-      id: p.slug,
-      type: 'planet',
-      position: { x: p.map_x, y: p.map_y },
-      data: nodeData(p),
-    }))
-)
+function systemSize(members) {
+  const maxPlanetSize = members.length ? Math.max(...members.map(p => p.size)) : 24
+  return members.length === 1 ? maxPlanetSize * 5 : 60 + members.length * 40 + maxPlanetSize
+}
+
+// Vue Flow requires parent nodes to appear before their children
+const visibleNodes = computed(() => {
+  const systemNodes = []
+  const planetNodes = []
+
+  for (const system of systems.value) {
+    const allMembers = planets.value.filter(p => p.system_slug?.trim() === system.slug)
+    const hasVisible = allMembers.some(p => visibleWorldIds.value.has(p.slug))
+    if (!hasVisible) continue
+
+    const size = systemSize(allMembers)
+    const color = averageHexColors(allMembers.map(p => p.color))
+
+    systemNodes.push({
+      id: `system-${system.slug}`,
+      type: 'system',
+      position: { x: system.map_x, y: system.map_y },
+      style: { width: `${size}px`, height: `${size}px`, zIndex: -1 },
+      data: { name: system.name, starName: system.star_name ?? null, color, size, slug: system.slug },
+    })
+
+    allMembers.forEach((planet) => {
+      if (!visibleWorldIds.value.has(planet.slug)) return
+      planetNodes.push({
+        id: planet.slug,
+        type: 'planet',
+        position: { x: planet.map_x, y: planet.map_y },
+        data: nodeData(planet),
+      })
+    })
+  }
+
+  return [...systemNodes, ...planetNodes]
+})
 
 const visibleEdges = computed(() =>
   allEdges.filter(e =>
@@ -116,10 +161,13 @@ const visibleEdges = computed(() =>
 )
 
 
-const selectedPlanet = ref(null)
+const selectedSlug = ref(null)
+const selectedPlanet = computed(() =>
+  planets.value.find(p => p.slug === selectedSlug.value) ?? null
+)
 
 function onNodeClick({ node }) {
-  selectedPlanet.value = node.data
+  if (node.type === 'planet') selectedSlug.value = node.id
 }
 
 </script>

@@ -1,13 +1,23 @@
+import { collection, query, where, doc, updateDoc, getDocs, onSnapshot } from 'firebase/firestore'
+
 const readSlugs = ref([])
 const initialized = ref(false)
 
 export function useReadBooks() {
   async function init() {
     if (initialized.value) return
-    const { client } = useSupabase()
-    const { data } = await client.from('books').select('slug').eq('read', true)
-    if (data) readSlugs.value = data.map(r => r.slug.trim())
+    const db = useFirestore()
+
+    const snap = await getDocs(query(collection(db, 'books'), where('read', '==', true)))
+    readSlugs.value = snap.docs.map(d => d.id)
     initialized.value = true
+
+    // Real-time updates after initial load
+    onSnapshot(
+      query(collection(db, 'books'), where('read', '==', true)),
+      (snap) => { readSlugs.value = snap.docs.map(d => d.id) },
+      (err) => console.error('[readBooks snapshot]', err)
+    )
   }
 
   async function toggle(slug) {
@@ -15,9 +25,8 @@ export function useReadBooks() {
     readSlugs.value = wasRead
       ? readSlugs.value.filter(s => s !== slug)
       : [...readSlugs.value, slug]
-
-    const { client } = useSupabase()
-    await client.from('books').update({ read: !wasRead }).eq('slug', slug)
+    const db = useFirestore()
+    await updateDoc(doc(db, 'books', slug), { read: !wasRead })
   }
 
   function isRead(slug) {

@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { collection, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore'
 
 export interface Book {
   slug: string
@@ -39,16 +40,25 @@ const loaded = ref(false)
 export function useCosmere(): CosmereStore {
   async function load() {
     if (loaded.value) return
-    const { client } = useSupabase()
-    const [{ data: booksData }, c, a] = await Promise.all([
-      client.from('books').select('*').order('release_order'),
+    const db = useFirestore()
+
+    const [booksSnap, c, a] = await Promise.all([
+      getDocs(query(collection(db, 'books'), orderBy('release_order'))),
       $fetch<Character[]>('/data/characters.json'),
       $fetch<Appearance[]>('/data/appearances.json'),
     ])
-    books.value = (booksData ?? []).map(b => ({ ...b, slug: b.slug?.trim() }))
+
+    books.value = booksSnap.docs.map(d => ({ slug: d.id, ...d.data() } as Book))
     characters.value = c
     appearances.value = a
     loaded.value = true
+
+    // Real-time updates after initial load
+    onSnapshot(
+      query(collection(db, 'books'), orderBy('release_order')),
+      (snap) => { books.value = snap.docs.map(d => ({ slug: d.id, ...d.data() } as Book)) },
+      (err) => console.error('[books snapshot]', err)
+    )
   }
 
   return { books, characters, appearances, loaded, load }

@@ -1,3 +1,5 @@
+import { collection, query, orderBy, doc, updateDoc, getDocs, onSnapshot } from 'firebase/firestore'
+
 function darkenHex(hex, factor = 0.3) {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -12,10 +14,18 @@ const initialized = ref(false)
 export function usePlanetSettings() {
   async function init() {
     if (initialized.value) return
-    const { client } = useSupabase()
-    const { data } = await client.from('planets').select('*').order('name')
-    if (data) planets.value = data.map(p => ({ ...p, slug: p.slug?.trim() }))
+    const db = useFirestore()
+
+    const snap = await getDocs(query(collection(db, 'planets'), orderBy('name')))
+    planets.value = snap.docs.map(d => ({ slug: d.id, ...d.data() }))
     initialized.value = true
+
+    // Real-time updates after initial load
+    onSnapshot(
+      query(collection(db, 'planets'), orderBy('name')),
+      (snap) => { planets.value = snap.docs.map(d => ({ slug: d.id, ...d.data() })) },
+      (err) => console.error('[planets snapshot]', err)
+    )
   }
 
   function getColor(slug) {
@@ -25,9 +35,21 @@ export function usePlanetSettings() {
   async function setColor(slug, color) {
     const planet = planets.value.find(p => p.slug === slug)
     if (planet) planet.color = color
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { color })
+  }
 
-    const { client } = useSupabase()
-    await client.from('planets').update({ color }).eq('slug', slug)
+  async function batchUpdatePositions(updates) {
+    updates.forEach(({ slug, map_x, map_y }) => {
+      const planet = planets.value.find(p => p.slug === slug)
+      if (planet) { planet.map_x = map_x; planet.map_y = map_y }
+    })
+    const db = useFirestore()
+    await Promise.all(
+      updates.map(({ slug, map_x, map_y }) =>
+        updateDoc(doc(db, 'planets', slug), { map_x, map_y })
+      )
+    )
   }
 
   function nodeData(planet) {
@@ -35,5 +57,5 @@ export function usePlanetSettings() {
     return { name: planet.name, color, colorDark: darkenHex(color), size: planet.size }
   }
 
-  return { planets, init, getColor, setColor, nodeData }
+  return { planets, init, getColor, setColor, nodeData, batchUpdatePositions }
 }

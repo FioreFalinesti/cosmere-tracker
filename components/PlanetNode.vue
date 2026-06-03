@@ -6,7 +6,7 @@
         width: `${data.size}px`,
         height: `${data.size}px`,
         background: `radial-gradient(circle at 35% 35%, white 0%, ${data.color} 40%, ${data.colorDark} 100%)`,
-        boxShadow: `0 0 ${data.size * 0.6}px ${data.size * 0.2}px ${data.color}55, 0 0 ${data.size * 1.5}px ${data.size * 0.15}px ${data.color}22`,
+        boxShadow: `0 0 ${data.size * 0.3}px ${data.size * 0.08}px ${data.color}33, 0 0 ${data.size * 0.7}px ${data.size * 0.05}px ${data.color}11`,
       }"
     />
     <div class="planet-label">
@@ -28,7 +28,7 @@ defineProps({
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
 }
 
@@ -38,16 +38,12 @@ defineProps({
   flex-shrink: 0;
 }
 
-.planet-node:hover .planet-orb {
-  filter: brightness(1.15);
-}
-
 .planet-label {
   text-align: center;
 }
 
 .planet-name {
-  font-size: 13px;
+  font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.2;
