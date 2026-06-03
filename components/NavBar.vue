@@ -13,20 +13,7 @@
         >
           Map
         </NuxtLink>
-        <NuxtLink
-          to="/books"
-          class="text-indigo-300 hover:text-blue-100 transition-colors"
-          active-class="text-accent-400"
-        >
-          Books
-        </NuxtLink>
-        <NuxtLink
-          to="/characters"
-          class="text-indigo-300 hover:text-blue-100 transition-colors"
-          active-class="text-accent-400"
-        >
-          Characters
-        </NuxtLink>
+
         <NuxtLink
           to="/settings"
           class="text-indigo-300 hover:text-blue-100 transition-colors"
