@@ -86,36 +86,27 @@ await initRead()
 await initPlanets()
 await initSystems()
 
-const worldBooks = {
-  sel:      ['elantris', 'the-emperors-soul'],
-  scadrial: ['the-final-empire', 'the-well-of-ascension', 'the-hero-of-ages',
-             'the-alloy-of-law', 'shadows-of-self', 'the-bands-of-mourning',
-             'the-lost-metal', 'mistborn-secret-history'],
-  nalthis:  ['warbreaker'],
-  roshar:   ['the-way-of-kings', 'words-of-radiance', 'edgedancer', 'oathbringer',
-             'rhythm-of-war', 'dawnshard', 'wind-and-truth'],
-  braize:   ['the-way-of-kings', 'words-of-radiance', 'oathbringer', 'rhythm-of-war', 'wind-and-truth'],
-  ashyn:    ['the-way-of-kings', 'words-of-radiance', 'oathbringer', 'rhythm-of-war'],
-  taldain:  ['arcanum-unbounded'],
-  threnody: ['arcanum-unbounded'],
-  lumar:    ['tress-of-the-emerald-sea'],
-  komashi:  ['yumi-and-the-nightmare-painter'],
-  canticle: ['the-sunlit-man'],
-}
-
 const allEdges = [
   { id: 'e-roshar-braize', source: 'roshar', target: 'braize', animated: true, style: { stroke: '#f87171', strokeWidth: 1.5, strokeDasharray: '4 4' } },
   { id: 'e-roshar-ashyn',  source: 'roshar', target: 'ashyn',  animated: true, style: { stroke: '#a78bfa', strokeWidth: 1.5, strokeDasharray: '4 4' } },
 ]
 
-const visibleWorldIds = computed(() => new Set(
-  Object.entries(worldBooks)
-    .filter(([, bookIds]) => bookIds.some(id => readSlugs.value.includes(id)))
-    .map(([worldId]) => worldId)
-))
+const visibleWorldIds = computed(() => {
+  const ids = new Set()
+  for (const book of books.value) {
+    if (readSlugs.value.includes(book.slug) && book.planets) {
+      book.planets.forEach(p => ids.add(p))
+    }
+  }
+  return ids
+})
+
+function planetSize(p) {
+  return Math.floor((p.size_multiplier ?? 1) * 16)
+}
 
 function systemSize(members) {
-  const maxPlanetSize = members.length ? Math.max(...members.map(p => p.size)) : 24
+  const maxPlanetSize = members.length ? Math.max(...members.map(planetSize)) : 24
   return members.length === 1 ? maxPlanetSize * 5 : 60 + members.length * 40 + maxPlanetSize
 }
 

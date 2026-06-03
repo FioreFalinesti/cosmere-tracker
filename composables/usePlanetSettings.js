@@ -54,7 +54,8 @@ export function usePlanetSettings() {
 
   function nodeData(planet) {
     const color = planet.color
-    return { name: planet.name, color, colorDark: darkenHex(color), size: planet.size }
+    const size = Math.floor((planet.size_multiplier ?? 1) * 16)
+    return { name: planet.name, color, colorDark: darkenHex(color), size }
   }
 
   return { planets, init, getColor, setColor, nodeData, batchUpdatePositions }

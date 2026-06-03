@@ -8,6 +8,7 @@ export interface Book {
   published_on: string
   release_order: number
   read: boolean
+  planets: string[]
 }
 
 export interface Character {
