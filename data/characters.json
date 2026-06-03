@@ -1,0 +1,22 @@
+[
+  { "id": "raoden", "name": "Raoden", "world": "Sel", "description": "Prince of Arelon, cursed by the Shaod and cast into Elantris. A natural leader who works to rebuild the fallen city from within.", "isPoV": true },
+  { "id": "sarene", "name": "Sarene", "world": "Sel", "description": "Princess of Teod, betrothed to Raoden. Sharp-witted, politically astute, and fiercely independent.", "isPoV": true },
+  { "id": "hrathen", "name": "Hrathen", "world": "Sel", "description": "High Priest of Fjorden and Wyrn's gyorn, sent to convert Arelon to Shu-Dereth within three months.", "isPoV": true },
+  { "id": "galladon", "name": "Galladon", "world": "Sel", "description": "A Dula scholar from Duladen, Raoden's first companion in Elantris. Sardonic but deeply loyal.", "isPoV": false },
+  { "id": "karata", "name": "Karata", "world": "Sel", "description": "Leader of one of the gangs within Elantris, former city guard. Fierce protector of the weak.", "isPoV": false },
+  { "id": "shaor", "name": "Shaor", "world": "Sel", "description": "Feral gang leader within Elantris, surrendered to the pain and madness of the Shaod.", "isPoV": false },
+  { "id": "aanden", "name": "Aanden", "world": "Sel", "description": "Leader of the most powerful gang in Elantris, obsessed with maintaining his former noble authority.", "isPoV": false },
+  { "id": "dashe", "name": "Dashe", "world": "Sel", "description": "Member of Karata's group in Elantris, loyal to her cause.", "isPoV": false },
+  { "id": "dilaf", "name": "Dilaf", "world": "Sel", "description": "Hrathen's Arelish arteth, fanatical devotee of Jaddeth with a deep personal hatred of Elantris.", "isPoV": false },
+  { "id": "roial", "name": "Roial", "world": "Sel", "description": "Duke of Sarene's circle, the wealthiest noble in Arelon and a shrewd political player.", "isPoV": false },
+  { "id": "eondel", "name": "Eondel", "world": "Sel", "description": "Count and military commander, loyal member of Sarene's opposition circle.", "isPoV": false },
+  { "id": "iadon", "name": "Iadon", "world": "Sel", "description": "King of Arelon, Raoden's father. A merchant king who rose to power after Elantris fell.", "isPoV": false },
+  { "id": "kiin", "name": "Kiin", "world": "Sel", "description": "Sarene's uncle, a powerful cook and former mercenary. Harbors many secrets.", "isPoV": false },
+  { "id": "lukel", "name": "Lukel", "world": "Sel", "description": "Kiin's son and Sarene's cousin, cheerful merchant and member of the inner circle.", "isPoV": false },
+  { "id": "shuden", "name": "Shuden", "world": "Sel", "description": "A JinDo nobleman, part of Sarene's political group, known for his grace and Jindo fighting style.", "isPoV": false },
+  { "id": "telrii", "name": "Telrii", "world": "Sel", "description": "Ambitious Arelish duke bribed by Hrathen to convert and destabilize Arelon's politics.", "isPoV": false },
+  { "id": "omin", "name": "Omin", "world": "Sel", "description": "Priest of Shu-Korath, leader of the rival Derethi-opposed religion in Arelon.", "isPoV": false },
+  { "id": "seinalan", "name": "Seinalan", "world": "Sel", "description": "Patriarch of Shu-Korath, Sarene's childhood friend, a high-ranking church official.", "isPoV": false },
+  { "id": "eventeo", "name": "Eventeo", "world": "Sel", "description": "King of Teod, Sarene's father. A steady ruler devoted to his daughter's wellbeing.", "isPoV": false },
+  { "id": "ashe", "name": "Ashe", "world": "Sel", "description": "Sarene's seon, a sentient Aonic spirit who serves as her companion and messenger.", "isPoV": false }
+]
