@@ -12,7 +12,7 @@ const props = defineProps({
 const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
 const { planets, batchUpdatePositions } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
-const { viewingSystem, selectedPlanetSlug } = useMapState()
+const { viewingSystem, selectedPlanetSlug, editCancelled } = useMapState()
 
 const originalPositions = ref({})
 
@@ -198,28 +198,34 @@ watch(() => props.editPositions, async (newVal, oldVal) => {
   }
 
   if (oldVal === true && newVal === false) {
-    const allNodes = getNodes.value
-    const planetUpdates = []
-    const systemUpdates = []
+    if (editCancelled.value) {
+      // Restore original positions without saving
+      setNodes(getNodes.value.map(n => ({
+        ...n,
+        position: originalPositions.value[n.id] ?? n.position,
+      })))
+    } else {
+      // Save moved positions to Firestore
+      const allNodes = getNodes.value
+      const planetUpdates = []
+      const systemUpdates = []
 
-    for (const n of allNodes) {
-      const orig = originalPositions.value[n.id]
-      if (!orig) continue
-      const dx = Math.round(n.position.x) - Math.round(orig.x)
-      const dy = Math.round(n.position.y) - Math.round(orig.y)
-      if (dx === 0 && dy === 0) continue
+      for (const n of allNodes) {
+        const orig = originalPositions.value[n.id]
+        if (!orig) continue
+        const dx = Math.round(n.position.x) - Math.round(orig.x)
+        const dy = Math.round(n.position.y) - Math.round(orig.y)
+        if (dx === 0 && dy === 0) continue
 
-      if (n.type === 'planet') {
-        planetUpdates.push({ slug: n.id, map_x: Math.round(n.position.x), map_y: Math.round(n.position.y) })
-      } else if (n.type === 'system') {
-        systemUpdates.push({ slug: n.id.replace('system-', ''), map_x: Math.round(n.position.x), map_y: Math.round(n.position.y) })
+        if (n.type === 'system') {
+          systemUpdates.push({ slug: n.id.replace('system-', ''), map_x: Math.round(n.position.x), map_y: Math.round(n.position.y) })
+        }
       }
-    }
 
-    await Promise.all([
-      planetUpdates.length ? batchUpdatePositions(planetUpdates) : Promise.resolve(),
-      systemUpdates.length ? batchUpdateSystemPositions(systemUpdates) : Promise.resolve(),
-    ])
+      await Promise.all([
+        systemUpdates.length ? batchUpdateSystemPositions(systemUpdates) : Promise.resolve(),
+      ])
+    }
   }
 })
 </script>

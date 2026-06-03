@@ -28,19 +28,32 @@
       </div>
     </div>
 
-    <!-- Edit Positions toggle — only relevant on the map page -->
-    <div v-if="route.path === '/'" class="shrink-0 border-t border-surface-700 px-4 py-3 flex items-center justify-between">
-      <span class="text-xs text-indigo-400">Edit Positions</span>
-      <button
-        class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
-        :class="editPositions ? 'bg-accent-600' : 'bg-surface-600'"
-        @click="editPositions = !editPositions"
-      >
-        <span
-          class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform"
-          :class="editPositions ? 'translate-x-5' : 'translate-x-1'"
-        />
-      </button>
+    <!-- Edit positions — only on the map page -->
+    <div v-if="route.path === '/'" class="shrink-0 border-t border-surface-700 px-4 py-3">
+      <template v-if="!editPositions">
+        <button
+          class="w-full py-2 rounded-lg text-sm font-medium bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-blue-100 transition-colors"
+          @click="startEdit"
+        >
+          Edit Positions
+        </button>
+      </template>
+      <template v-else>
+        <div class="flex gap-2">
+          <button
+            class="flex-1 py-2 rounded-lg text-sm font-medium bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+            @click="saveEdit"
+          >
+            Save
+          </button>
+          <button
+            class="flex-1 py-2 rounded-lg text-sm font-medium bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-red-400 transition-colors"
+            @click="cancelEdit"
+          >
+            Cancel
+          </button>
+        </div>
+      </template>
     </div>
   </aside>
 </template>
@@ -48,11 +61,11 @@
 <script setup>
 const { books, load } = useCosmere()
 const { init, toggle, isRead, selectAll, unselectAll } = useReadBooks()
-const { editPositions } = useMapState()
+const { editPositions, startEdit, saveEdit, cancelEdit } = useMapState()
 const route = useRoute()
 
 await load()
-await init()
+init()
 
 const sortedBooks = computed(() =>
   [...books.value].sort((a, b) => a.release_order - b.release_order)
