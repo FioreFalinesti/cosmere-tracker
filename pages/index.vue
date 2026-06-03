@@ -102,7 +102,7 @@ const visibleWorldIds = computed(() => {
 })
 
 function planetSize(p) {
-  return Math.floor((p.size_multiplier ?? 1) * 16)
+  return Math.floor(Math.max(0.1, p.size_multiplier ?? 1) * 16)
 }
 
 // Vue Flow requires parent nodes to appear before their children
@@ -127,7 +127,7 @@ const visibleNodes = computed(() => {
     })
 
     allMembers.forEach((planet) => {
-      if (!visibleWorldIds.value.has(planet.slug)) return
+      if (!system.always_visible && !visibleWorldIds.value.has(planet.slug)) return
       planetNodes.push({
         id: planet.slug,
         type: 'planet',
