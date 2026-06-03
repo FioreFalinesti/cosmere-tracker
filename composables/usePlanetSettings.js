@@ -1,4 +1,4 @@
-import { collection, query, orderBy, doc, updateDoc, getDocs, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, doc, updateDoc, setDoc, getDocs, onSnapshot } from 'firebase/firestore'
 
 function darkenHex(hex, factor = 0.3) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -55,7 +55,7 @@ export function usePlanetSettings() {
   function nodeData(planet) {
     const color = planet.color
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
-    return { name: planet.name, color, colorDark: darkenHex(color), size, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length }
+    return { name: planet.name, color, colorDark: darkenHex(color), size, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length, ringCount: planet.ring_count ?? 0 }
   }
 
   async function setWiki(slug, url) {
@@ -72,5 +72,34 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { moons })
   }
 
-  return { planets, init, getColor, setColor, setWiki, updateMoons, nodeData, batchUpdatePositions }
+  async function setSizeMultiplier(slug, value) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.size_multiplier = value
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { size_multiplier: value })
+  }
+
+  async function setRingCount(slug, value) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.ring_count = value
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { ring_count: value })
+  }
+
+  async function setUninhabited(slug, value) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.uninhabited = value
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { uninhabited: value })
+  }
+
+  async function createPlanet(slug, name) {
+    const db = useFirestore()
+    await setDoc(doc(collection(db, 'planets'), slug), {
+      name, color: '#888888', size_multiplier: 1.0, gravity_multiplier: 1.0,
+      ring_count: 0, wiki: '', uninhabited: false, moons: [],
+    })
+  }
+
+  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, createPlanet, updateMoons, nodeData, batchUpdatePositions }
 }

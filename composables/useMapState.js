@@ -2,6 +2,8 @@ const editPositions = ref(false)
 const editCancelled = ref(false)
 const viewingSystem = ref(null)
 const selectedPlanetSlug = ref(null)
+const selectedSystemSlug = ref(null)
+const zoomTarget = ref(null) // { type: 'planet'|'system', slug }
 
 export function useMapState() {
   function startEdit() {
@@ -19,5 +21,5 @@ export function useMapState() {
     editPositions.value = false
   }
 
-  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, startEdit, saveEdit, cancelEdit }
+  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, startEdit, saveEdit, cancelEdit }
 }

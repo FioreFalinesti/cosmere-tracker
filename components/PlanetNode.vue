@@ -1,6 +1,25 @@
 <template>
-  <div class="planet-node">
+  <div class="planet-node" @click="handleClick">
     <div class="planet-wrap" :style="{ width: `${data.size}px`, height: `${data.size}px` }">
+
+      <!-- Saturn rings — back half (rendered before planet so orb covers the middle) -->
+      <svg
+        v-if="rings.length"
+        :width="data.size"
+        :height="data.size"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+      >
+        <path
+          v-for="(ring, i) in rings"
+          :key="`rb-${i}`"
+          :d="`M ${cx - ring.rx} ${cy} A ${ring.rx} ${ring.ry} 0 0 1 ${cx + ring.rx} ${cy}`"
+          fill="none"
+          :stroke="ring.color"
+          :stroke-width="ring.sw"
+          stroke-opacity="0.3"
+        />
+      </svg>
+
       <div
         class="planet-orb"
         :style="{
@@ -48,36 +67,74 @@
           <textPath :href="`#${pathId}`" startOffset="50%">{{ data.name }}</textPath>
         </text>
       </svg>
+
+      <!-- Saturn rings — front half (rendered after planet so it appears in front) -->
+      <svg
+        v-if="rings.length"
+        :width="data.size"
+        :height="data.size"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+      >
+        <path
+          v-for="(ring, i) in rings"
+          :key="`rf-${i}`"
+          :d="`M ${cx - ring.rx} ${cy} A ${ring.rx} ${ring.ry} 0 0 0 ${cx + ring.rx} ${cy}`"
+          fill="none"
+          :stroke="ring.color"
+          :stroke-width="ring.sw"
+          stroke-opacity="0.65"
+        />
+      </svg>
+
     </div>
   </div>
 </template>
 
 <script setup>
 const props = defineProps({
+  id: { type: String, required: true },
   data: { type: Object, required: true },
   selected: { type: Boolean, default: false },
 })
 
-const { viewingSystem } = useMapState()
+const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget } = useMapState()
+
+function handleClick() {
+  selectedPlanetSlug.value = props.id
+  selectedSystemSlug.value = null
+  zoomTarget.value = { type: 'planet', slug: props.id }
+}
 const showName = computed(() => viewingSystem.value === props.data.systemSlug)
 
-// Unique path ID per planet to avoid SVG defs collisions
 const pathId = computed(() => `tp-${props.data.name.replace(/\s+/g, '-').toLowerCase()}`)
+
+const cx = computed(() => props.data.size / 2)
+const cy = computed(() => props.data.size / 2)
 
 const textArcPath = computed(() => {
   const r = props.data.size / 2 + 1
-  const cx = props.data.size / 2
-  const cy = props.data.size / 2
-  return `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
+  return `M ${cx.value - r} ${cy.value} A ${r} ${r} 0 0 1 ${cx.value + r} ${cy.value}`
 })
 
-// Scale font down so text always fits within the semicircle arc (πr)
 const fontSize = computed(() => {
   const r = props.data.size / 2 + 1
   const available = Math.PI * r
-  const needed = props.data.name.length * 0.6 * 8  // estimate at 8px
+  const needed = props.data.name.length * 0.6 * 8
   if (needed <= available) return 8
   return Math.max(4, Math.floor(available / (props.data.name.length * 0.6)))
+})
+
+const RING_COLORS = ['#ffffff', '#cccccc', '#e8e8e8', '#bbbbbb', '#d4d4d4']
+
+const rings = computed(() => {
+  const count = props.data.ringCount ?? 0
+  if (count <= 0) return []
+  const r = props.data.size / 2
+  const sw = Math.max(2, r * 0.1)
+  return Array.from({ length: count }, (_, i) => {
+    const rx = r * (1.28 + i * 0.22)
+    return { rx, ry: rx * 0.28, sw, color: RING_COLORS[i % RING_COLORS.length] }
+  })
 })
 </script>
 

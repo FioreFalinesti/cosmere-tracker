@@ -12,7 +12,7 @@ const props = defineProps({
 const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
 const { planets, batchUpdatePositions } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
-const { viewingSystem, selectedPlanetSlug, editCancelled } = useMapState()
+const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, editCancelled } = useMapState()
 
 const originalPositions = ref({})
 
@@ -55,10 +55,8 @@ function orbitGeometry(system) {
   const outerR = size / 2 - 6
   const cx = systemNode.position.x + size / 2
   const cy = systemNode.position.y + size / 2
-  const planetSlugs = (system.members ?? system.planets ?? [])
-    .filter(m => typeof m === 'string' ? true : m.type === 'planet')
-    .map(m => typeof m === 'string' ? m : m.slug)
-  return { innerR, outerR, cx, cy, members: planetSlugs }
+  const allMembers = system.members ?? system.planets ?? []
+  return { innerR, outerR, cx, cy, allMembers }
 }
 
 function animate() {
@@ -69,11 +67,14 @@ function animate() {
     for (const system of systems.value) {
       const geo = orbitGeometry(system)
       if (!geo) continue
-      const { innerR, outerR, cx, cy, members } = geo
-      const n = members.length
+      const { innerR, outerR, cx, cy, allMembers } = geo
+      const n = allMembers.length
       if (n === 0) continue
 
-      members.forEach((slug, i) => {
+      allMembers.forEach((member, i) => {
+        const slug = typeof member === 'string' ? member : member.slug
+        const type = typeof member === 'string' ? 'planet' : member.type
+        if (type !== 'planet') return
         const planet = planets.value.find(p => p.slug === slug)
         if (!planet) return
         const orbitR = innerR + (outerR - innerR) * (i + 1) / (n + 1)
@@ -127,25 +128,38 @@ function zoomToSystem(systemNode, panelOpen = false) {
   setViewport({ x: vpX, y: vpY, zoom }, { duration: 600 })
 }
 
-onPaneClick(() => { selectedPlanetSlug.value = null })
+watch(zoomTarget, target => {
+  if (!target) return
+  nextTick(() => {
+    if (target.type === 'planet') {
+      const node = findNode(target.slug)
+      if (!node) return
+      const pSize = node.data?.size ?? 64
+      const cw = window.innerWidth - 256
+      const ch = window.innerHeight - 56
+      const availableW = cw * 0.8  // account for panel
+      const zoom = Math.min(4, Math.max(0.5, (availableW * 0.3) / pSize))
+      const vpX = availableW / 2 - (node.position.x + pSize / 2) * zoom
+      const vpY = ch / 2 - (node.position.y + pSize / 2) * zoom
+      setViewport({ x: vpX, y: vpY, zoom }, { duration: 600 })
+    }
+    zoomTarget.value = null
+  })
+})
+
+onPaneClick(() => { selectedPlanetSlug.value = null; selectedSystemSlug.value = null })
 
 onNodeClick(({ node }) => {
   if (node.type === 'system') {
-    zoomToSystem(node, selectedPlanetSlug.value !== null)
+    selectedSystemSlug.value = node.data.slug
+    selectedPlanetSlug.value = null
+    zoomToSystem(node, true)
     return
   }
   if (node.type === 'planet') {
-    if (!viewingSystem.value) {
-      const system = systems.value.find(s => (s.planets ?? []).includes(node.id))
-      if (system) {
-        const systemNode = findNode(`system-${system.slug}`)
-        if (systemNode) zoomToSystem(systemNode, false)
-      }
-    } else {
-      selectedPlanetSlug.value = node.id
-      const systemNode = findNode(`system-${viewingSystem.value}`)
-      if (systemNode) zoomToSystem(systemNode, true)
-    }
+    selectedPlanetSlug.value = node.id
+    selectedSystemSlug.value = null
+    zoomTarget.value = { type: 'planet', slug: node.id }
   }
 })
 

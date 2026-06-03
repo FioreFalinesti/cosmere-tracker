@@ -33,5 +33,12 @@ export function useSystemSettings() {
     )
   }
 
-  return { systems, init, batchUpdateSystemPositions }
+  async function updateSystemMembers(slug, members) {
+    const system = systems.value.find(s => s.slug === slug)
+    if (system) system.members = members
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planetary_systems', slug), { members })
+  }
+
+  return { systems, init, batchUpdateSystemPositions, updateSystemMembers }
 }
