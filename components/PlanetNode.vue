@@ -6,10 +6,34 @@
         :style="{
           width: `${data.size}px`,
           height: `${data.size}px`,
-          background: `radial-gradient(circle at 35% 35%, white 0%, ${data.color} 40%, ${data.colorDark} 100%)`,
-          boxShadow: `0 0 ${data.size * 0.3}px ${data.size * 0.08}px ${data.color}33, 0 0 ${data.size * 0.7}px ${data.size * 0.05}px ${data.color}11`,
+          background: data.uninhabited
+            ? `radial-gradient(circle at 40% 40%, ${data.color} 0%, ${data.colorDark} 60%, ${data.colorDark} 100%)`
+            : `radial-gradient(circle at 35% 35%, white 0%, ${data.color} 40%, ${data.colorDark} 100%)`,
+          boxShadow: data.uninhabited
+            ? `0 0 ${data.size * 0.15}px ${data.size * 0.04}px ${data.color}22`
+            : `0 0 ${data.size * 0.3}px ${data.size * 0.08}px ${data.color}33, 0 0 ${data.size * 0.7}px ${data.size * 0.05}px ${data.color}11`,
         }"
       />
+
+      <!-- Moon orbit rings — shown when viewing this system -->
+      <svg
+        v-if="showName && data.moonCount > 0"
+        :width="data.size"
+        :height="data.size"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+      >
+        <circle
+          v-for="i in data.moonCount"
+          :key="i"
+          :cx="data.size / 2"
+          :cy="data.size / 2"
+          :r="data.size / 2 + 40 + (i - 1) * 30"
+          stroke="white"
+          stroke-opacity="0.12"
+          stroke-width="0.75"
+          fill="none"
+        />
+      </svg>
 
       <!-- Name curved along the top — only shown when viewing this system -->
       <svg v-if="showName"

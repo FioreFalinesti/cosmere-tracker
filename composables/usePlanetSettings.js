@@ -55,7 +55,7 @@ export function usePlanetSettings() {
   function nodeData(planet) {
     const color = planet.color
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
-    return { name: planet.name, color, colorDark: darkenHex(color), size }
+    return { name: planet.name, color, colorDark: darkenHex(color), size, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length }
   }
 
   async function setWiki(slug, url) {
@@ -65,5 +65,12 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { wiki: url })
   }
 
-  return { planets, init, getColor, setColor, setWiki, nodeData, batchUpdatePositions }
+  async function updateMoons(slug, moons) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.moons = moons
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { moons })
+  }
+
+  return { planets, init, getColor, setColor, setWiki, updateMoons, nodeData, batchUpdatePositions }
 }

@@ -16,7 +16,6 @@ const { viewingSystem, selectedPlanetSlug, editCancelled } = useMapState()
 
 const originalPositions = ref({})
 
-
 // Re-fit viewport whenever the set of visible systems changes
 let prevSystemKey = ''
 function fitToSystems(nodes) {
@@ -25,7 +24,6 @@ function fitToSystems(nodes) {
   setTimeout(() => fitView({ nodes: systemIds, padding: 0.15, duration: 500 }), 100)
 }
 
-// Sync nodes — in edit mode preserve dragged positions for existing nodes
 watch(() => props.nodes, nodes => {
   if (!props.editPositions) {
     setNodes(nodes)
@@ -44,8 +42,8 @@ watch(() => props.nodes, nodes => {
 watch(() => props.edges, edges => setEdges(edges), { immediate: true, deep: false })
 
 // ── Orbital animation ─────────────────────────────────────────────────────────
-// ω ∝ gravity_multiplier / orbitRadius^1.5  (Kepler-inspired: inner planets faster)
-const SPEED = 0.025  // global speed factor (rad per ms at ref orbit radius)
+const SPEED = 0.025
+const MOON_SPEED = 0.0008
 let animFrame = null
 
 function orbitGeometry(system) {
@@ -57,13 +55,17 @@ function orbitGeometry(system) {
   const outerR = size / 2 - 6
   const cx = systemNode.position.x + size / 2
   const cy = systemNode.position.y + size / 2
-  return { innerR, outerR, cx, cy, members: system.planets ?? [] }
+  const planetSlugs = (system.members ?? system.planets ?? [])
+    .filter(m => typeof m === 'string' ? true : m.type === 'planet')
+    .map(m => typeof m === 'string' ? m : m.slug)
+  return { innerR, outerR, cx, cy, members: planetSlugs }
 }
 
 function animate() {
   if (!props.editPositions) {
     const t = performance.now()
 
+    // Planet orbital animation
     for (const system of systems.value) {
       const geo = orbitGeometry(system)
       if (!geo) continue
@@ -74,13 +76,11 @@ function animate() {
       members.forEach((slug, i) => {
         const planet = planets.value.find(p => p.slug === slug)
         if (!planet) return
-
         const orbitR = innerR + (outerR - innerR) * (i + 1) / (n + 1)
         const gravity = planet.gravity_multiplier ?? 1
         const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
         const baseAngle = (i / n) * 2 * Math.PI - Math.PI / 2
         const angle = baseAngle + ω * t
-
         const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
         updateNode(slug, {
           position: {
@@ -89,6 +89,21 @@ function animate() {
           },
         })
       })
+    }
+
+    // Moon animation
+    for (const node of getNodes.value) {
+      if (node.type !== 'moon') continue
+      const { parentSlug, index, count, planetSize } = node.data
+      const parentNode = findNode(parentSlug)
+      if (!parentNode) continue
+      const pCX = parentNode.position.x + planetSize / 2
+      const pCY = parentNode.position.y + planetSize / 2
+      const orbitR = planetSize / 2 + 40 + index * 30
+      const ω = MOON_SPEED / Math.sqrt(orbitR)
+      const baseAngle = (index / Math.max(count, 1)) * 2 * Math.PI
+      const a = baseAngle + ω * t
+      updateNode(node.id, { position: { x: pCX + orbitR * Math.cos(a) - 2.5, y: pCY + orbitR * Math.sin(a) - 2.5 } })
     }
   }
   animFrame = requestAnimationFrame(animate)
@@ -103,14 +118,12 @@ function zoomToSystem(systemNode, panelOpen = false) {
   const cw = window.innerWidth - 256
   const ch = window.innerHeight - 56
   const padding = 0.3
-  const availableW = panelOpen ? cw * 0.6 : cw
-
+  const availableW = panelOpen ? cw * 0.8 : cw
   const zoom = Math.min(Math.max((availableW * (1 - 2 * padding)) / size, 0.25), 4)
   const centerX = panelOpen ? availableW / 2 : cw / 2
-  const centerY = ch / 2 - 30  // shift up to give the system name label room below
+  const centerY = ch / 2 - 30
   const vpX = centerX - (systemNode.position.x + size / 2) * zoom
   const vpY = centerY - (systemNode.position.y + size / 2) * zoom
-
   setViewport({ x: vpX, y: vpY, zoom }, { duration: 600 })
 }
 
@@ -121,7 +134,6 @@ onNodeClick(({ node }) => {
     zoomToSystem(node, selectedPlanetSlug.value !== null)
     return
   }
-
   if (node.type === 'planet') {
     if (!viewingSystem.value) {
       const system = systems.value.find(s => (s.planets ?? []).includes(node.id))
@@ -142,7 +154,6 @@ watchEffect(() => {
   const vp = viewport.value
   const cw = window.innerWidth - 256
   const ch = window.innerHeight - 56
-
   const visibleSystems = props.nodes.filter(n => {
     if (n.type !== 'system') return false
     const size = n.style?.width ? parseFloat(n.style.width) : 200
@@ -152,18 +163,18 @@ watchEffect(() => {
     const sb = (n.position.y + size) * vp.zoom + vp.y
     return sr > 0 && sl < cw && sb > 0 && st < ch
   })
-
   viewingSystem.value = visibleSystems.length === 1 ? visibleSystems[0].data.slug : null
 })
 
-// When a system drag starts, snapshot positions of system + member planets
 onNodeDragStart(({ node }) => {
   if (!props.editPositions || node.type !== 'system') return
   dragStartPositions[node.id] = { ...node.position }
   const systemSlug = node.id.replace('system-', '')
   const system = systems.value.find(s => s.slug === systemSlug)
-  ;(system?.planets ?? [])
-    .map(slug => planets.value.find(p => p.slug === slug))
+  const slugs = (system?.members ?? system?.planets ?? [])
+    .filter(m => (typeof m === 'string') || m.type === 'planet')
+    .map(m => typeof m === 'string' ? m : m.slug)
+  slugs.map(slug => planets.value.find(p => p.slug === slug))
     .filter(Boolean)
     .forEach(p => {
       const pn = findNode(p.slug)
@@ -171,7 +182,6 @@ onNodeDragStart(({ node }) => {
     })
 })
 
-// During a system drag, move member planets by the same delta
 onNodeDrag(({ node }) => {
   if (!props.editPositions || node.type !== 'system') return
   const start = dragStartPositions[node.id]
@@ -180,8 +190,10 @@ onNodeDrag(({ node }) => {
   const dy = node.position.y - start.y
   const systemSlug = node.id.replace('system-', '')
   const system = systems.value.find(s => s.slug === systemSlug)
-  ;(system?.planets ?? [])
-    .map(slug => planets.value.find(p => p.slug === slug))
+  const slugs = (system?.members ?? system?.planets ?? [])
+    .filter(m => (typeof m === 'string') || m.type === 'planet')
+    .map(m => typeof m === 'string' ? m : m.slug)
+  slugs.map(slug => planets.value.find(p => p.slug === slug))
     .filter(Boolean)
     .forEach(p => {
       const ps = dragStartPositions[p.slug]
@@ -199,29 +211,23 @@ watch(() => props.editPositions, async (newVal, oldVal) => {
 
   if (oldVal === true && newVal === false) {
     if (editCancelled.value) {
-      // Restore original positions without saving
       setNodes(getNodes.value.map(n => ({
         ...n,
         position: originalPositions.value[n.id] ?? n.position,
       })))
     } else {
-      // Save moved positions to Firestore
       const allNodes = getNodes.value
-      const planetUpdates = []
       const systemUpdates = []
-
       for (const n of allNodes) {
         const orig = originalPositions.value[n.id]
         if (!orig) continue
         const dx = Math.round(n.position.x) - Math.round(orig.x)
         const dy = Math.round(n.position.y) - Math.round(orig.y)
         if (dx === 0 && dy === 0) continue
-
         if (n.type === 'system') {
           systemUpdates.push({ slug: n.id.replace('system-', ''), map_x: Math.round(n.position.x), map_y: Math.round(n.position.y) })
         }
       }
-
       await Promise.all([
         systemUpdates.length ? batchUpdateSystemPositions(systemUpdates) : Promise.resolve(),
       ])
