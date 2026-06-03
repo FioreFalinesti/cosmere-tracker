@@ -6,6 +6,7 @@
       :nodes-draggable="editPositions"
       :min-zoom="0.25"
       :max-zoom="4"
+      :default-viewport="{ zoom: 0.65, x: 0, y: 0 }"
       class="cosmere-map"
       @node-click="onNodeClick"
     >
@@ -86,10 +87,6 @@ await initRead()
 await initPlanets()
 await initSystems()
 
-const allEdges = [
-  { id: 'e-roshar-braize', source: 'roshar', target: 'braize', animated: true, style: { stroke: '#f87171', strokeWidth: 1.5, strokeDasharray: '4 4' } },
-  { id: 'e-roshar-ashyn',  source: 'roshar', target: 'ashyn',  animated: true, style: { stroke: '#a78bfa', strokeWidth: 1.5, strokeDasharray: '4 4' } },
-]
 
 const visibleWorldIds = computed(() => {
   const ids = new Set()
@@ -111,7 +108,7 @@ const visibleNodes = computed(() => {
   const planetNodes = []
 
   for (const system of systems.value) {
-    const allMembers = planets.value.filter(p => p.system_slug?.trim() === system.slug)
+    const allMembers = (system.planets ?? []).map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
     const hasVisible = system.always_visible || allMembers.some(p => visibleWorldIds.value.has(p.slug))
     if (!hasVisible) continue
 
@@ -140,11 +137,7 @@ const visibleNodes = computed(() => {
   return [...systemNodes, ...planetNodes]
 })
 
-const visibleEdges = computed(() =>
-  allEdges.filter(e =>
-    visibleWorldIds.value.has(e.source) && visibleWorldIds.value.has(e.target)
-  )
-)
+const visibleEdges = ref([])
 
 
 const selectedSlug = ref(null)

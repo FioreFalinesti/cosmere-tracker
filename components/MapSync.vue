@@ -9,12 +9,14 @@ const props = defineProps({
   editPositions: { type: Boolean, default: false },
 })
 
-const { setNodes, setEdges, getNodes } = useVueFlow()
+const { setNodes, setEdges, getNodes, findNode, updateNode, onNodeDragStart, onNodeDrag } = useVueFlow()
 const { planets, batchUpdatePositions } = usePlanetSettings()
-const { batchUpdateSystemPositions } = useSystemSettings()
+const { systems, batchUpdateSystemPositions } = useSystemSettings()
 
 const originalPositions = ref({})
+const dragStartPositions = {}
 
+// Sync nodes — in edit mode preserve dragged positions for existing nodes
 watch(() => props.nodes, nodes => {
   if (!props.editPositions) {
     setNodes(nodes)
@@ -26,6 +28,37 @@ watch(() => props.nodes, nodes => {
 }, { immediate: true, deep: false })
 
 watch(() => props.edges, edges => setEdges(edges), { immediate: true, deep: false })
+
+// When a system drag starts, snapshot starting positions of system + member planets
+onNodeDragStart(({ node }) => {
+  if (!props.editPositions || node.type !== 'system') return
+  dragStartPositions[node.id] = { ...node.position }
+  const systemSlug = node.id.replace('system-', '')
+  const system = systems.value.find(s => s.slug === systemSlug)
+  ;(system?.planets ?? []).map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
+    .forEach(p => {
+      const planetNode = findNode(p.slug)
+      if (planetNode) dragStartPositions[p.slug] = { ...planetNode.position }
+    })
+})
+
+// During drag, move member planets by the same delta as the system
+onNodeDrag(({ node }) => {
+  if (!props.editPositions || node.type !== 'system') return
+  const start = dragStartPositions[node.id]
+  if (!start) return
+  const dx = node.position.x - start.x
+  const dy = node.position.y - start.y
+  const systemSlug = node.id.replace('system-', '')
+  const system = systems.value.find(s => s.slug === systemSlug)
+  ;(system?.planets ?? []).map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
+    .forEach(p => {
+      const planetStart = dragStartPositions[p.slug]
+      if (planetStart) {
+        updateNode(p.slug, { position: { x: planetStart.x + dx, y: planetStart.y + dy } })
+      }
+    })
+})
 
 watch(() => props.editPositions, async (newVal, oldVal) => {
   if (newVal && !oldVal) {
