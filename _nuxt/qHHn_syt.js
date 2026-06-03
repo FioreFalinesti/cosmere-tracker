@@ -1,1 +1,0 @@
-import{_ as e,c as s,a as o,o as n}from"./ssoHjelu.js";const a={},c={class:"max-w-2xl"};function r(l,t){return n(),s("div",c,[...t[0]||(t[0]=[o("h1",{class:"text-3xl font-bold text-blue-50 mb-8"},"Settings",-1)])])}const x=e(a,[["render",r]]);export{x as default};
