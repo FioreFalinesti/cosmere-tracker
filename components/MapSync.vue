@@ -9,7 +9,7 @@ const props = defineProps({
   editPositions: { type: Boolean, default: false },
 })
 
-const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onNodeDragStart, onNodeDrag } = useVueFlow()
+const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
 const { planets, batchUpdatePositions } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
 const { viewingSystem, selectedPlanetSlug } = useMapState()
@@ -82,7 +82,7 @@ function animate() {
         const baseAngle = (i / n) * 2 * Math.PI - Math.PI / 2
         const angle = baseAngle + ω * t
 
-        const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 16)
+        const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
         updateNode(slug, {
           position: {
             x: cx + orbitR * Math.cos(angle) - pSize / 2,
@@ -103,17 +103,19 @@ function zoomToSystem(systemNode, panelOpen = false) {
   const size = systemNode.style?.width ? parseFloat(systemNode.style.width) : 200
   const cw = window.innerWidth - 256
   const ch = window.innerHeight - 56
-  const padding = 0.25
+  const padding = 0.3
   const availableW = panelOpen ? cw * 0.6 : cw
 
   const zoom = Math.min(Math.max((availableW * (1 - 2 * padding)) / size, 0.25), 4)
   const centerX = panelOpen ? availableW / 2 : cw / 2
-  const centerY = ch / 2
+  const centerY = ch / 2 - 30  // shift up to give the system name label room below
   const vpX = centerX - (systemNode.position.x + size / 2) * zoom
   const vpY = centerY - (systemNode.position.y + size / 2) * zoom
 
   setViewport({ x: vpX, y: vpY, zoom }, { duration: 600 })
 }
+
+onPaneClick(() => { selectedPlanetSlug.value = null })
 
 onNodeClick(({ node }) => {
   if (node.type === 'system') {

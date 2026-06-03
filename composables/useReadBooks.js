@@ -33,5 +33,17 @@ export function useReadBooks() {
     return readSlugs.value.includes(slug)
   }
 
-  return { readSlugs, init, toggle, isRead }
+  async function selectAll(slugs) {
+    readSlugs.value = [...slugs]
+    const db = useFirestore()
+    await Promise.all(slugs.map(slug => updateDoc(doc(db, 'books', slug), { read: true })))
+  }
+
+  async function unselectAll(slugs) {
+    readSlugs.value = []
+    const db = useFirestore()
+    await Promise.all(slugs.map(slug => updateDoc(doc(db, 'books', slug), { read: false })))
+  }
+
+  return { readSlugs, init, toggle, isRead, selectAll, unselectAll }
 }

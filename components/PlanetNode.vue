@@ -20,7 +20,7 @@
         <defs>
           <path :id="pathId" :d="textArcPath" />
         </defs>
-        <text fill="white" font-size="8" font-weight="600" text-anchor="middle">
+        <text fill="white" :font-size="fontSize" font-weight="600" text-anchor="middle">
           <textPath :href="`#${pathId}`" startOffset="50%">{{ data.name }}</textPath>
         </text>
       </svg>
@@ -40,12 +40,20 @@ const showName = computed(() => viewingSystem.value === props.data.systemSlug)
 // Unique path ID per planet to avoid SVG defs collisions
 const pathId = computed(() => `tp-${props.data.name.replace(/\s+/g, '-').toLowerCase()}`)
 
-// Upper semicircle — minimum curve radius matches size_multiplier=1 (size 16)
 const textArcPath = computed(() => {
-  const r = Math.max(props.data.size, 16) / 2 + 1
+  const r = props.data.size / 2 + 1
   const cx = props.data.size / 2
   const cy = props.data.size / 2
   return `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
+})
+
+// Scale font down so text always fits within the semicircle arc (πr)
+const fontSize = computed(() => {
+  const r = props.data.size / 2 + 1
+  const available = Math.PI * r
+  const needed = props.data.name.length * 0.6 * 8  // estimate at 8px
+  if (needed <= available) return 8
+  return Math.max(4, Math.floor(available / (props.data.name.length * 0.6)))
 })
 </script>
 

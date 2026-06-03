@@ -99,7 +99,7 @@ const sunStyle = computed(() => ({
 }
 
 .system-label {
-  font-size: 11px;
+  font-size: 32px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;

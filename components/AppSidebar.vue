@@ -1,6 +1,11 @@
 <template>
   <aside class="w-64 shrink-0 border-r border-surface-700 bg-surface-900 h-full flex flex-col">
-    <div class="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+    <div class="flex items-center justify-between px-4 pt-3 pb-1">
+      <button class="text-xs text-indigo-400 hover:text-blue-200 transition-colors" @click="selectAll(sortedBooks.map(b => b.slug))">Select All</button>
+      <button class="text-xs text-indigo-400 hover:text-blue-200 transition-colors" @click="unselectAll(sortedBooks.map(b => b.slug))">Unselect All</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
       <div
         v-for="book in sortedBooks"
         :key="book.slug"
@@ -42,7 +47,7 @@
 
 <script setup>
 const { books, load } = useCosmere()
-const { init, toggle, isRead } = useReadBooks()
+const { init, toggle, isRead, selectAll, unselectAll } = useReadBooks()
 const { editPositions } = useMapState()
 const route = useRoute()
 
