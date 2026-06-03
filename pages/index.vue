@@ -115,7 +115,7 @@ const visibleNodes = computed(() => {
     const hasVisible = allMembers.some(p => visibleWorldIds.value.has(p.slug))
     if (!hasVisible) continue
 
-    const size = system.size ?? 120
+    const size = system.size ?? 200
     const color = averageHexColors(allMembers.map(p => p.color))
 
     systemNodes.push({
