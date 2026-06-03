@@ -105,11 +105,6 @@ function planetSize(p) {
   return Math.floor((p.size_multiplier ?? 1) * 16)
 }
 
-function systemSize(members) {
-  const maxPlanetSize = members.length ? Math.max(...members.map(planetSize)) : 24
-  return members.length === 1 ? maxPlanetSize * 5 : 60 + members.length * 40 + maxPlanetSize
-}
-
 // Vue Flow requires parent nodes to appear before their children
 const visibleNodes = computed(() => {
   const systemNodes = []
@@ -120,7 +115,7 @@ const visibleNodes = computed(() => {
     const hasVisible = allMembers.some(p => visibleWorldIds.value.has(p.slug))
     if (!hasVisible) continue
 
-    const size = systemSize(allMembers)
+    const size = system.size ?? 120
     const color = averageHexColors(allMembers.map(p => p.color))
 
     systemNodes.push({
