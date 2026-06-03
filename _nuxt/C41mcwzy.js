@@ -1,1 +1,0 @@
-import{D as l}from"./DzlkUzSs.js";const e=l(!1),t=l(!1),u=l(null),i=l(null);function c(){function a(){t.value=!1,e.value=!0}function n(){t.value=!1,e.value=!1}function s(){t.value=!0,e.value=!1}return{editPositions:e,editCancelled:t,viewingSystem:u,selectedPlanetSlug:i,startEdit:a,saveEdit:n,cancelEdit:s}}export{c as u};

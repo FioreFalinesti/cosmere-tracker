@@ -1,0 +1,1 @@
+import{D as e}from"./C_8fdEQW.js";const t=e(!1),l=e(!1),u=e(null),o=e(null),c=e(null),i=e(null);function r(){function n(){l.value=!1,t.value=!0}function s(){l.value=!1,t.value=!1}function a(){l.value=!0,t.value=!1}return{editPositions:t,editCancelled:l,viewingSystem:u,selectedPlanetSlug:o,selectedSystemSlug:c,zoomTarget:i,startEdit:n,saveEdit:s,cancelEdit:a}}export{r as u};
