@@ -112,7 +112,7 @@ const visibleNodes = computed(() => {
 
   for (const system of systems.value) {
     const allMembers = planets.value.filter(p => p.system_slug?.trim() === system.slug)
-    const hasVisible = allMembers.some(p => visibleWorldIds.value.has(p.slug))
+    const hasVisible = system.always_visible || allMembers.some(p => visibleWorldIds.value.has(p.slug))
     if (!hasVisible) continue
 
     const size = system.size ?? 200
