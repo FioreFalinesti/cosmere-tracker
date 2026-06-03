@@ -58,5 +58,12 @@ export function usePlanetSettings() {
     return { name: planet.name, color, colorDark: darkenHex(color), size }
   }
 
-  return { planets, init, getColor, setColor, nodeData, batchUpdatePositions }
+  async function setWiki(slug, url) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.wiki = url
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { wiki: url })
+  }
+
+  return { planets, init, getColor, setColor, setWiki, nodeData, batchUpdatePositions }
 }

@@ -2,6 +2,22 @@
   <div class="system-container">
     <div class="system-circle-wrap" :style="{ width: `${data.size}px`, height: `${data.size}px` }">
       <div class="system-circle" :style="circleStyle" />
+
+      <!-- Orbit rings (one per planet, evenly spaced between star and system edge) -->
+      <svg class="orbit-rings" :width="data.size" :height="data.size">
+        <circle
+          v-for="(r, i) in orbitRadii"
+          :key="i"
+          :cx="data.size / 2"
+          :cy="data.size / 2"
+          :r="r"
+          :stroke="data.color"
+          stroke-opacity="0.18"
+          stroke-width="1"
+          fill="none"
+        />
+      </svg>
+
       <div class="system-sun" :style="sunStyle" />
     </div>
     <p class="system-label" :style="{ color: `${data.color}aa` }">{{ data.name }}</p>
@@ -16,6 +32,16 @@ const props = defineProps({
 })
 
 const sunSize = computed(() => Math.max(6, Math.round(props.data.size * 0.08)))
+
+const orbitRadii = computed(() => {
+  const n = props.data.planetCount ?? 0
+  if (n === 0) return []
+  const innerR = sunSize.value / 2 + 4
+  const outerR = props.data.size / 2 - 6
+  return Array.from({ length: n }, (_, i) =>
+    innerR + (outerR - innerR) * (i + 1) / (n + 1)
+  )
+})
 
 const circleStyle = computed(() => ({
   width: '100%',
@@ -56,6 +82,12 @@ const sunStyle = computed(() => ({
   position: absolute;
   inset: 0;
   border-radius: 50%;
+}
+
+.orbit-rings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .system-sun {
