@@ -16,7 +16,6 @@ const { viewingSystem, selectedPlanetSlug } = useMapState()
 
 const originalPositions = ref({})
 
-watch(viewingSystem, val => console.log('[viewingSystem]', val))
 
 // Re-fit viewport whenever the set of visible systems changes
 let prevSystemKey = ''
