@@ -5,6 +5,18 @@
 
       <!-- Orbit rings — one per member, styled by type -->
       <svg class="orbit-rings" :width="data.size" :height="data.size">
+        <!-- Binary: secondary star orbit ring (star itself is a separate animated node) -->
+        <circle
+          v-if="data.isBinary"
+          :cx="data.size / 2" :cy="data.size / 2"
+          :r="secondaryOrbitR"
+          :stroke="data.secondaryStarColor ?? '#ff8844'"
+          stroke-opacity="0.28"
+          stroke-width="0.75"
+          stroke-dasharray="4 4"
+          fill="none"
+        />
+
         <template v-for="(item, i) in orbitItems" :key="i">
           <!-- Planet orbit: thin white line -->
           <circle v-if="item.type === 'planet'"
@@ -53,7 +65,17 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
 })
 
-const sunSize = computed(() => Math.max(6, Math.round(props.data.size * 0.08)))
+const sunSize = computed(() => {
+  const base = Math.max(6, Math.round(props.data.size * 0.08))
+  return props.data.isSupergiant ? base * 3 : base
+})
+
+const secondaryOrbitR = computed(() => {
+  if (!props.data.isBinary) return 0
+  const innerR = sunSize.value / 2 + 4
+  const outerR = props.data.size / 2 - 6
+  return innerR + (props.data.secondaryStarOrbitFraction ?? 0.65) * (outerR - innerR)
+})
 
 // 5 rings for comet belt — light blues, r-10 to r+10, widely spaced dots
 const cometRings = [
@@ -91,14 +113,21 @@ const beltRings = [
 // Build one orbit entry per member (planet or body), evenly spaced
 const orbitItems = computed(() => {
   const types = props.data.memberTypes ?? Array(props.data.planetCount ?? 0).fill('planet')
+  const lagrangePoints = props.data.memberLagrangePoints ?? []
+  const fractions = props.data.memberOrbitFractions
   const n = types.length
   if (n === 0) return []
   const innerR = sunSize.value / 2 + 4
   const outerR = props.data.size / 2 - 6
-  return types.map((type, i) => ({
-    type,
-    r: innerR + (outerR - innerR) * (i + 1) / (n + 1),
-  }))
+  return types.map((type, i) => {
+    if (lagrangePoints[i]) return null  // no orbit ring for Lagrange-locked planets
+    return {
+      type,
+      r: fractions
+        ? innerR + fractions[i] * (outerR - innerR)
+        : innerR + (outerR - innerR) * (i + 1) / (n + 1),
+    }
+  }).filter(Boolean)
 })
 
 const circleStyle = computed(() => ({
@@ -113,12 +142,24 @@ const circleStyle = computed(() => ({
   ].join(', '),
 }))
 
-const sunStyle = computed(() => ({
-  width: `${sunSize.value}px`,
-  height: `${sunSize.value}px`,
-  background: `radial-gradient(circle, #ffffff 0%, #fff5c0 50%, #ffcc44 100%)`,
-  boxShadow: `0 0 ${sunSize.value * 1.5}px ${sunSize.value * 0.5}px #ffcc4466, 0 0 ${sunSize.value * 3}px ${sunSize.value}px #ffcc4422`,
-}))
+function blendToWhite(hex, amount) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const m = n => Math.round(n + (255 - n) * amount).toString(16).padStart(2, '0')
+  return `#${m(r)}${m(g)}${m(b)}`
+}
+
+const sunStyle = computed(() => {
+  const c = props.data.starColor ?? '#ffcc44'
+  const mid = blendToWhite(c, 0.7)
+  return {
+    width: `${sunSize.value}px`,
+    height: `${sunSize.value}px`,
+    background: `radial-gradient(circle, #ffffff 0%, ${mid} 50%, ${c} 100%)`,
+    boxShadow: `0 0 ${sunSize.value * 1.5}px ${sunSize.value * 0.5}px ${c}66, 0 0 ${sunSize.value * 3}px ${sunSize.value}px ${c}22`,
+  }
+})
 </script>
 
 <style scoped>

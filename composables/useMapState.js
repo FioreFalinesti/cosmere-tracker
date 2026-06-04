@@ -1,3 +1,5 @@
+const polarOrbitAngles = reactive({}) // { [planetSlug]: perpAngle } — updated each animation frame
+
 const editPositions = ref(false)
 const editCancelled = ref(false)
 const viewingSystem = ref(null)
@@ -21,5 +23,5 @@ export function useMapState() {
     editPositions.value = false
   }
 
-  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, startEdit, saveEdit, cancelEdit }
+  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, polarOrbitAngles, startEdit, saveEdit, cancelEdit }
 }
