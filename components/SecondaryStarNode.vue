@@ -4,16 +4,22 @@
     <svg v-if="data.particulateRing && particulateRings.length"
       :width="data.size" :height="data.size"
       style="position: absolute; inset: 0; overflow: visible; pointer-events: none;">
-      <circle
-        v-for="ring in particulateRings" :key="ring.r"
-        :cx="data.size / 2" :cy="data.size / 2"
-        :r="ring.r"
-        :stroke="data.color ?? '#ff8844'"
-        :stroke-opacity="ring.opacity"
-        :stroke-width="ring.width"
-        :stroke-dasharray="ring.dash"
-        fill="none"
-      />
+      <defs>
+        <filter id="sec-spr-blur" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+      </defs>
+      <g filter="url(#sec-spr-blur)">
+        <circle
+          v-for="ring in particulateRings" :key="ring.r"
+          :cx="data.size / 2" :cy="data.size / 2"
+          :r="ring.r"
+          :stroke="data.color ?? '#ff8844'"
+          :stroke-opacity="ring.opacity"
+          :stroke-width="ring.width"
+          fill="none"
+        />
+      </g>
     </svg>
   </div>
 </template>
@@ -50,12 +56,11 @@ const starStyle = computed(() => {
 const particulateRings = computed(() => {
   if (!props.data.particulateRing) return []
   const sr = (props.data.size ?? 8) / 2
+  const r = sr * 2.0
   return [
-    { r: sr * 1.55, opacity: 0.12, width: 1.5, dash: '1 4' },
-    { r: sr * 1.85, opacity: 0.22, width: 2.5, dash: '2 2' },
-    { r: sr * 2.15, opacity: 0.28, width: 3,   dash: '1 2' },
-    { r: sr * 2.45, opacity: 0.22, width: 2.5, dash: '2 2' },
-    { r: sr * 2.75, opacity: 0.12, width: 1.5, dash: '1 4' },
+    { r: r * 0.92, opacity: 0.18, width: 14 },
+    { r,           opacity: 0.30, width: 22 },
+    { r: r * 1.08, opacity: 0.18, width: 14 },
   ]
 })
 </script>

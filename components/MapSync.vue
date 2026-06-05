@@ -163,12 +163,13 @@ function animate() {
         const starMember = allMembers[starMemberIdx]
         const secOrbitR = (typeof starMember === 'object' ? starMember.orbit_distance : null) ?? innerR + 0.65 * (autoOuterR - innerR)
         const lp = lagrangePos(member.lagrange_point, secOrbitR, secondaryAngle)
+        const lagrangeR = planet.orbit_distance ?? lp.r
         if (planet.polar_orbit_moons?.length) polarOrbitAngles[member.slug] = lp.a + Math.PI / 2
         const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
         updateNode(member.slug, {
           position: {
-            x: cx + lp.r * Math.cos(lp.a) - pSize / 2,
-            y: cy + lp.r * Math.sin(lp.a) - pSize / 2,
+            x: cx + lagrangeR * Math.cos(lp.a) - pSize / 2,
+            y: cy + lagrangeR * Math.sin(lp.a) - pSize / 2,
           },
         })
       })

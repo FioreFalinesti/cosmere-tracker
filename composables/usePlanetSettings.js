@@ -1,4 +1,5 @@
 import { collection, query, orderBy, doc, updateDoc, setDoc, getDocs, onSnapshot } from 'firebase/firestore'
+import { resolveColor } from '~/utils/orbitUtils'
 
 function darkenHex(hex, factor = 0.3) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -52,10 +53,10 @@ export function usePlanetSettings() {
     )
   }
 
-  function nodeData(planet) {
-    const color = planet.color
+  function nodeData(planet, readSlugs = []) {
     const isGasGiant = planet.is_gas_giant ?? false
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
+    const color = resolveColor(planet.orbit_events ?? [], planet.color, readSlugs)
     return { name: planet.name, color, colorDark: darkenHex(color), size, sizeMultiplier: planet.size_multiplier ?? 1, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length, isGasGiant, isDwarfPlanet: planet.is_dwarf_planet ?? false }
   }
 
@@ -153,7 +154,7 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { orbit_distance: distance ?? null })
   }
 
-  async function setOrbitEvents(slug, events) {
+  async function setTimelineEvents(slug, events) {
     const planet = planets.value.find(p => p.slug === slug)
     if (planet) planet.orbit_events = events
     const db = useFirestore()
@@ -236,5 +237,5 @@ export function usePlanetSettings() {
     })
   }
 
-  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setOrbitEvents, setPolarOrbitMoons, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, batchUpdatePositions, computeOrbitRadii, setPlanetName, renameMoon }
+  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setPolarOrbitMoons, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, batchUpdatePositions, computeOrbitRadii, setPlanetName, renameMoon }
 }

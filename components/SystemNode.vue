@@ -5,6 +5,12 @@
 
       <!-- Orbit rings — one per member, styled by type -->
       <svg class="orbit-rings" :width="data.size" :height="data.size">
+        <defs>
+          <filter v-if="data.starParticulateRing" id="spr-blur" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="7" />
+          </filter>
+        </defs>
+
         <!-- Binary: secondary star orbit ring (star itself is a separate animated node) -->
         <circle
           v-if="data.isBinary"
@@ -17,17 +23,18 @@
           fill="none"
         />
 
-        <!-- Primary star particulate ring -->
-        <circle
-          v-for="ring in starParticulateRings" :key="`spr-${ring.r}`"
-          :cx="data.size / 2" :cy="data.size / 2"
-          :r="ring.r"
-          :stroke="data.starColor ?? '#ffcc44'"
-          :stroke-opacity="ring.opacity"
-          :stroke-width="ring.width"
-          :stroke-dasharray="ring.dash"
-          fill="none"
-        />
+        <!-- Primary star particulate ring — blurred filled rings like the anomaly cloud -->
+        <g v-if="starParticulateRings.length" filter="url(#spr-blur)">
+          <circle
+            v-for="ring in starParticulateRings" :key="`spr-${ring.r}`"
+            :cx="data.size / 2" :cy="data.size / 2"
+            :r="ring.r"
+            fill="none"
+            :stroke="data.starColor ?? '#ffcc44'"
+            :stroke-opacity="ring.opacity"
+            :stroke-width="ring.width"
+          />
+        </g>
 
         <template v-for="(item, i) in orbitItems" :key="i">
           <!-- Planet orbit: thin white line -->
@@ -93,12 +100,11 @@ const orbitInnerR = computed(() => Math.floor(Math.max(0.1, props.data.starSize 
 const starParticulateRings = computed(() => {
   if (!props.data.starParticulateRing) return []
   const sr = sunSize.value / 2
+  const r = sr * 2.0
   return [
-    { r: sr * 1.55, opacity: 0.12, width: 1.5, dash: '1 4' },
-    { r: sr * 1.85, opacity: 0.22, width: 2.5, dash: '2 2' },
-    { r: sr * 2.15, opacity: 0.28, width: 3,   dash: '1 2' },
-    { r: sr * 2.45, opacity: 0.22, width: 2.5, dash: '2 2' },
-    { r: sr * 2.75, opacity: 0.12, width: 1.5, dash: '1 4' },
+    { r: r * 0.92, opacity: 0.18, width: 14 },
+    { r,           opacity: 0.30, width: 22 },
+    { r: r * 1.08, opacity: 0.18, width: 14 },
   ]
 })
 
