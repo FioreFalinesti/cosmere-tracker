@@ -186,6 +186,12 @@ const visibleNodes = computed(() => {
         slug: system.slug,
         planetCount: allMembers.length,
         memberTypes: systemMemberList.map(m => typeof m === 'string' ? 'planet' : m.type),
+        memberVisible: systemMemberList.map(m => {
+          const slug = typeof m === 'string' ? m : m.slug
+          const type = typeof m === 'string' ? 'planet' : m.type
+          if (type !== 'planet') return true
+          return !hiddenPlanetSlugs.value.includes(slug)
+        }),
         memberOrbitDistances,
         memberLagrangePoints,
       },
