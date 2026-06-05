@@ -1,18 +1,14 @@
 /**
- * Returns the effective orbit fraction for a planet, applying any book-triggered
- * orbit override from the planet's orbit_events array.
+ * Resolves the effective orbit distance (px from star centre) for a planet,
+ * applying any book-triggered orbit override from orbit_events.
  *
- * First matching event in orbit_events wins. Returns defaultFraction unchanged
- * if no event is triggered.
- *
- * @param {Array<{trigger_book: string, orbit_fraction: number}>} orbitEvents
- * @param {number} defaultFraction - value in [0, 1] from computeOrbitRadii
- * @param {string[]} readSlugs - currently-read book slugs
- * @returns {number} clamped to [0, 1]
+ * orbit_events still store a 0–1 fraction of the auto orbit range
+ * [innerR, autoOuterR].  The baseline is the planet's manual orbit_distance
+ * (px) if set, otherwise the auto-computed radius.
  */
-export function resolveOrbitFraction(orbitEvents, defaultFraction, readSlugs) {
-  if (!orbitEvents || orbitEvents.length === 0) return defaultFraction
+export function resolveOrbitDistance(orbitEvents, baselineDist, innerR, autoOuterR, readSlugs) {
+  if (!orbitEvents || orbitEvents.length === 0) return baselineDist
   const match = orbitEvents.find(ev => readSlugs.includes(ev.trigger_book))
-  if (!match) return defaultFraction
-  return Math.min(1, Math.max(0, match.orbit_fraction))
+  if (!match) return baselineDist
+  return match.orbit_distance ?? baselineDist
 }

@@ -17,6 +17,18 @@
           fill="none"
         />
 
+        <!-- Primary star particulate ring -->
+        <circle
+          v-for="ring in starParticulateRings" :key="`spr-${ring.r}`"
+          :cx="data.size / 2" :cy="data.size / 2"
+          :r="ring.r"
+          :stroke="data.starColor ?? '#ffcc44'"
+          :stroke-opacity="ring.opacity"
+          :stroke-width="ring.width"
+          :stroke-dasharray="ring.dash"
+          fill="none"
+        />
+
         <template v-for="(item, i) in orbitItems" :key="i">
           <!-- Planet orbit: thin white line -->
           <circle v-if="item.type === 'planet'"
@@ -49,6 +61,15 @@
               fill="none"
             />
           </template>
+          <!-- Star: dashed orbit ring in star color -->
+          <circle v-else-if="item.type === 'star'"
+            :cx="data.size / 2" :cy="data.size / 2" :r="item.r"
+            :stroke="data.secondaryStarColor ?? '#ff8844'"
+            stroke-opacity="0.28" stroke-width="0.75" stroke-dasharray="4 4" fill="none" />
+          <!-- Anomaly: faint orbit ring -->
+          <circle v-else-if="item.type === 'anomaly'"
+            :cx="data.size / 2" :cy="data.size / 2" :r="item.r"
+            stroke="#cc99ff" stroke-opacity="0.15" stroke-width="0.75" fill="none" />
         </template>
       </svg>
 
@@ -65,17 +86,30 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
 })
 
-const sunSize = computed(() => {
-  const base = Math.max(6, Math.round(props.data.size * 0.08))
-  return props.data.isSupergiant ? base * 3 : base
+const sunSize = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64))
+
+const orbitInnerR = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64) / 2 + 20)
+
+const starParticulateRings = computed(() => {
+  if (!props.data.starParticulateRing) return []
+  const sr = sunSize.value / 2
+  return [
+    { r: sr * 1.55, opacity: 0.12, width: 1.5, dash: '1 4' },
+    { r: sr * 1.85, opacity: 0.22, width: 2.5, dash: '2 2' },
+    { r: sr * 2.15, opacity: 0.28, width: 3,   dash: '1 2' },
+    { r: sr * 2.45, opacity: 0.22, width: 2.5, dash: '2 2' },
+    { r: sr * 2.75, opacity: 0.12, width: 1.5, dash: '1 4' },
+  ]
 })
 
-const secondaryOrbitR = computed(() => {
-  if (!props.data.isBinary) return 0
-  const innerR = sunSize.value / 2 + 4
-  const outerR = props.data.size / 2 - 6
-  return innerR + (props.data.secondaryStarOrbitFraction ?? 0.65) * (outerR - innerR)
+const autoOuterR = computed(() => {
+  const n = (props.data.memberTypes ?? []).length
+  return orbitInnerR.value + Math.max(80, n * 55)
 })
+
+const secondaryOrbitR = computed(() =>
+  props.data.isBinary ? (props.data.secondaryStarOrbitDist ?? 0) : 0
+)
 
 // 5 rings for comet belt — light blues, r-10 to r+10, widely spaced dots
 const cometRings = [
@@ -114,17 +148,17 @@ const beltRings = [
 const orbitItems = computed(() => {
   const types = props.data.memberTypes ?? Array(props.data.planetCount ?? 0).fill('planet')
   const lagrangePoints = props.data.memberLagrangePoints ?? []
-  const fractions = props.data.memberOrbitFractions
+  const distances = props.data.memberOrbitDistances
   const n = types.length
   if (n === 0) return []
-  const innerR = sunSize.value / 2 + 4
-  const outerR = props.data.size / 2 - 6
+  const innerR = orbitInnerR.value
+  const outerR = autoOuterR.value
   return types.map((type, i) => {
     if (lagrangePoints[i]) return null  // no orbit ring for Lagrange-locked planets
     return {
       type,
-      r: fractions
-        ? innerR + fractions[i] * (outerR - innerR)
+      r: distances
+        ? distances[i]
         : innerR + (outerR - innerR) * (i + 1) / (n + 1),
     }
   }).filter(Boolean)

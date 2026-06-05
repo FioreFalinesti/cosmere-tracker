@@ -54,8 +54,9 @@ export function usePlanetSettings() {
 
   function nodeData(planet) {
     const color = planet.color
+    const isGasGiant = planet.is_gas_giant ?? false
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
-    return { name: planet.name, color, colorDark: darkenHex(color), size, sizeMultiplier: planet.size_multiplier ?? 1, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length, ringCount: planet.ring_count ?? 0, isGasGiant: planet.is_gas_giant ?? false, isDwarfPlanet: planet.is_dwarf_planet ?? false }
+    return { name: planet.name, color, colorDark: darkenHex(color), size, sizeMultiplier: planet.size_multiplier ?? 1, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length, isGasGiant, isDwarfPlanet: planet.is_dwarf_planet ?? false }
   }
 
   async function setWiki(slug, url) {
@@ -131,11 +132,11 @@ export function usePlanetSettings() {
     })
   }
 
-  async function setMoonOrbitFractions(slug, fractions) {
+  async function setMoonOrbitDistances(slug, distances) {
     const planet = planets.value.find(p => p.slug === slug)
-    if (planet) planet.moon_orbit_fractions = fractions
+    if (planet) planet.moon_orbit_distances = distances
     const db = useFirestore()
-    await updateDoc(doc(db, 'planets', slug), { moon_orbit_fractions: fractions })
+    await updateDoc(doc(db, 'planets', slug), { moon_orbit_distances: distances })
   }
 
   async function setPolarOrbitMoons(slug, moons) {
@@ -145,11 +146,11 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { polar_orbit_moons: moons })
   }
 
-  async function setOrbitFraction(slug, fraction) {
+  async function setOrbitDistance(slug, distance) {
     const planet = planets.value.find(p => p.slug === slug)
-    if (planet) planet.orbit_fraction = fraction
+    if (planet) planet.orbit_distance = distance
     const db = useFirestore()
-    await updateDoc(doc(db, 'planets', slug), { orbit_fraction: fraction ?? null })
+    await updateDoc(doc(db, 'planets', slug), { orbit_distance: distance ?? null })
   }
 
   async function setOrbitEvents(slug, events) {
@@ -157,6 +158,74 @@ export function usePlanetSettings() {
     if (planet) planet.orbit_events = events
     const db = useFirestore()
     await updateDoc(doc(db, 'planets', slug), { orbit_events: events })
+  }
+
+  async function setPlanetName(slug, name) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.name = name
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { name })
+  }
+
+  async function setSatelliteTilt(planetSlug, tilts) {
+    const planet = planets.value.find(p => p.slug === planetSlug)
+    if (planet) planet.satellite_tilts = tilts
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', planetSlug), { satellite_tilts: tilts })
+  }
+
+  async function setSatelliteThickness(planetSlug, thicknesses) {
+    const planet = planets.value.find(p => p.slug === planetSlug)
+    if (planet) planet.satellite_thicknesses = thicknesses
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', planetSlug), { satellite_thicknesses: thicknesses })
+  }
+
+  async function setSatelliteType(planetSlug, moonName, type) {
+    const planet = planets.value.find(p => p.slug === planetSlug)
+    if (!planet) return
+    const types = { ...(planet.satellite_types ?? {}), [moonName]: type }
+    planet.satellite_types = types
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', planetSlug), { satellite_types: types })
+  }
+
+  async function setMoonOrbitType(planetSlug, moonName, type) {
+    const planet = planets.value.find(p => p.slug === planetSlug)
+    if (!planet) return
+    const types = { ...(planet.moon_orbit_types ?? {}), [moonName]: type }
+    planet.moon_orbit_types = types
+    const polar = (planet.polar_orbit_moons ?? []).filter(m => m !== moonName)
+    if (type === 'polar') polar.push(moonName)
+    planet.polar_orbit_moons = polar
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', planetSlug), { moon_orbit_types: types, polar_orbit_moons: polar })
+  }
+
+  async function renameMoon(planetSlug, oldName, newName) {
+    const planet = planets.value.find(p => p.slug === planetSlug)
+    if (!planet || !newName.trim() || oldName === newName) return
+    const moons = (planet.moons ?? []).map(m => m === oldName ? newName : m)
+    const fractions = { ...(planet.moon_orbit_distances ?? {}) }
+    if (fractions[oldName] !== undefined) {
+      fractions[newName] = fractions[oldName]
+      delete fractions[oldName]
+    }
+    const satTypes = { ...(planet.satellite_types ?? {}) }
+    if (satTypes[oldName] !== undefined) { satTypes[newName] = satTypes[oldName]; delete satTypes[oldName] }
+    const satThick = { ...(planet.satellite_thicknesses ?? {}) }
+    if (satThick[oldName] !== undefined) { satThick[newName] = satThick[oldName]; delete satThick[oldName] }
+    const satTilts = { ...(planet.satellite_tilts ?? {}) }
+    if (satTilts[oldName] !== undefined) { satTilts[newName] = satTilts[oldName]; delete satTilts[oldName] }
+    const polar = (planet.polar_orbit_moons ?? []).map(m => m === oldName ? newName : m)
+    planet.moons = moons
+    planet.moon_orbit_distances = fractions
+    planet.satellite_types = satTypes
+    planet.satellite_thicknesses = satThick
+    planet.satellite_tilts = satTilts
+    planet.polar_orbit_moons = polar
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', planetSlug), { moons, moon_orbit_distances: fractions, satellite_types: satTypes, satellite_thicknesses: satThick, satellite_tilts: satTilts, polar_orbit_moons: polar })
   }
 
   async function createPlanet(slug, name) {
@@ -167,5 +236,5 @@ export function usePlanetSettings() {
     })
   }
 
-  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitFraction, setOrbitEvents, setPolarOrbitMoons, setMoonOrbitFractions, createPlanet, updateMoons, nodeData, batchUpdatePositions, computeOrbitRadii }
+  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setOrbitEvents, setPolarOrbitMoons, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, batchUpdatePositions, computeOrbitRadii, setPlanetName, renameMoon }
 }

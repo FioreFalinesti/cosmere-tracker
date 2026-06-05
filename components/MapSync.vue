@@ -2,6 +2,7 @@
 
 <script setup>
 import { useVueFlow } from '@vue-flow/core'
+import { resolveOrbitDistance } from '~/utils/orbitUtils'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
@@ -13,7 +14,7 @@ const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView
 const { planets, batchUpdatePositions, computeOrbitRadii } = usePlanetSettings()
 const { readSlugs } = useReadBooks()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
-const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, editCancelled, polarOrbitAngles } = useMapState()
+const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, editCancelled, polarOrbitAngles } = useMapState()
 
 const originalPositions = ref({})
 
@@ -59,18 +60,20 @@ watch(() => props.edges, edges => setEdges(edges), { immediate: true, deep: fals
 const SPEED = 0.025
 const MOON_SPEED = 0.0008
 let animFrame = null
+const planetPhaseOffsets = {}
 
 function orbitGeometry(system) {
   const systemNode = findNode(`system-${system.slug}`)
   if (!systemNode) return null
-  const size = systemNode.style?.width ? parseFloat(systemNode.style.width) : 200
-  const sunS = Math.max(6, Math.round(size * 0.08)) * (systemNode.data?.isSupergiant ? 3 : 1)
-  const innerR = sunS / 2 + 4
-  const outerR = size / 2 - 6
+  const size = systemNode.style?.width ? parseFloat(systemNode.style.width) : 400
+  const starVisualR = Math.floor(Math.max(0.1, systemNode.data?.starSize ?? 1) * 64) / 2
+  const innerR = Math.round(starVisualR) + 20
+  const allMembers = system.members ?? system.planets ?? []
+  const autoOuterR = innerR + Math.max(80, allMembers.length * 55)
+  const outerR = size / 2 - 40
   const cx = systemNode.position.x + size / 2
   const cy = systemNode.position.y + size / 2
-  const allMembers = system.members ?? system.planets ?? []
-  return { innerR, outerR, cx, cy, allMembers }
+  return { innerR, autoOuterR, outerR, cx, cy, allMembers }
 }
 
 function lagrangePos(lagrangePoint, secondaryOrbitR, secondaryAngle) {
@@ -92,12 +95,10 @@ function animate() {
     for (const system of systems.value) {
       const geo = orbitGeometry(system)
       if (!geo) continue
-      const { innerR, outerR, cx, cy, allMembers } = geo
-      const n = allMembers.length
-      if (n === 0) continue
+      const { innerR, autoOuterR, cx, cy, allMembers } = geo
+      if (allMembers.length === 0) continue
 
-      const orbitRadii = computeOrbitRadii(allMembers, innerR, outerR)
-      const range = outerR - innerR
+      const autoOrbitRadii = computeOrbitRadii(allMembers, innerR, autoOuterR)
 
       allMembers.forEach((member, i) => {
         const slug = typeof member === 'string' ? member : member.slug
@@ -106,15 +107,12 @@ function animate() {
         if (typeof member === 'object' && member.lagrange_point) return  // fixed at Lagrange point
         const planet = planets.value.find(p => p.slug === slug)
         if (!planet) return
-        const defaultFraction = range > 0 ? (orbitRadii[i] - innerR) / range : 0.5
-        const fraction = planet.orbit_fraction != null
-          ? Math.min(1, Math.max(0, planet.orbit_fraction))
-          : resolveOrbitFraction(planet.orbit_events ?? [], defaultFraction, readSlugs.value)
-        const orbitR = innerR + fraction * range
+        const baseline = planet.orbit_distance ?? autoOrbitRadii[i]
+        const orbitR = resolveOrbitDistance(planet.orbit_events ?? [], baseline, innerR, autoOuterR, readSlugs.value)
         const gravity = planet.gravity_multiplier ?? 1
         const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
-        const baseAngle = (i / n) * 2 * Math.PI - Math.PI / 2
-        const angle = baseAngle + ω * t
+        if (!(slug in planetPhaseOffsets)) planetPhaseOffsets[slug] = Math.random() * 2 * Math.PI
+        const angle = planetPhaseOffsets[slug] + ω * t
         const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
         if (planet.polar_orbit_moons?.length) polarOrbitAngles[slug] = angle + Math.PI / 2
         updateNode(slug, {
@@ -131,30 +129,40 @@ function animate() {
       if (!system.is_binary) continue
       const geo = orbitGeometry(system)
       if (!geo) continue
-      const { innerR, outerR, cx, cy, allMembers } = geo
-      const secondaryOrbitFraction = system.secondary_star_orbit_fraction ?? 0.65
-      const secondaryOrbitR = innerR + secondaryOrbitFraction * (outerR - innerR)
-      const ω = SPEED * 0.3 / Math.pow(secondaryOrbitR, 1.5)
-      const secondaryAngle = -Math.PI / 2 + ω * t
+      const { innerR, autoOuterR, cx, cy, allMembers } = geo
 
-      // Move secondary star node
-      const ssNode = findNode(`secondary-${system.slug}`)
-      if (ssNode) {
+      // Find first star-type member for Lagrange co-rotation reference
+      const starMemberIdx = allMembers.findIndex(m => typeof m === 'object' && m.type === 'star')
+      let secondaryAngle = -Math.PI / 2
+
+      // Animate each star-type member as a secondary star node
+      allMembers.forEach((member, mi) => {
+        if (typeof member !== 'object' || member.type !== 'star') return
+        const nodeId = `secondary-${system.slug}-${mi}`
+        const ssNode = findNode(nodeId)
+        if (!ssNode) return
+        const orbitR = member.orbit_distance ?? innerR + 0.65 * (autoOuterR - innerR)
+        const ω = SPEED * 0.3 / Math.pow(orbitR, 1.5)
+        if (!(nodeId in planetPhaseOffsets)) planetPhaseOffsets[nodeId] = Math.random() * 2 * Math.PI
+        const a = planetPhaseOffsets[nodeId] + ω * t
+        if (mi === starMemberIdx) secondaryAngle = a
         const ssR = (ssNode.data?.size ?? 8) / 2
-        updateNode(`secondary-${system.slug}`, {
+        updateNode(nodeId, {
           position: {
-            x: cx + secondaryOrbitR * Math.cos(secondaryAngle) - ssR,
-            y: cy + secondaryOrbitR * Math.sin(secondaryAngle) - ssR,
+            x: cx + orbitR * Math.cos(a) - ssR,
+            y: cy + orbitR * Math.sin(a) - ssR,
           },
         })
-      }
+      })
 
-      // Co-rotate Lagrange planets with secondary star
+      // Co-rotate Lagrange planets with first secondary star
       allMembers.forEach(member => {
         if (typeof member !== 'object' || !member.lagrange_point) return
         const planet = planets.value.find(p => p.slug === member.slug)
         if (!planet) return
-        const lp = lagrangePos(member.lagrange_point, secondaryOrbitR, secondaryAngle)
+        const starMember = allMembers[starMemberIdx]
+        const secOrbitR = (typeof starMember === 'object' ? starMember.orbit_distance : null) ?? innerR + 0.65 * (autoOuterR - innerR)
+        const lp = lagrangePos(member.lagrange_point, secOrbitR, secondaryAngle)
         if (planet.polar_orbit_moons?.length) polarOrbitAngles[member.slug] = lp.a + Math.PI / 2
         const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
         updateNode(member.slug, {
@@ -169,7 +177,7 @@ function animate() {
     // Moon animation
     for (const node of getNodes.value) {
       if (node.type !== 'moon') continue
-      const { parentSlug, index, count, planetSize, phaseOffset, isPolarOrbit, manualOrbitR } = node.data
+      const { parentSlug, index, count, planetSize, phaseOffset, isPolarOrbit, orbitType, orbitRotation, manualOrbitR } = node.data
       const parentNode = findNode(parentSlug)
       if (!parentNode) continue
       const pCX = parentNode.position.x + planetSize / 2
@@ -200,9 +208,45 @@ function animate() {
           },
         })
       } else {
-        const a = baseAngle + ω * t
-        updateNode(node.id, { position: { x: pCX + orbitR * Math.cos(a) - 2.5, y: pCY + orbitR * Math.sin(a) - 2.5 } })
+        const θ = baseAngle + ω * t
+        let x, y
+        if (orbitType === 'eccentric-a') {
+          const rot = orbitRotation ?? 0
+          const lx = orbitR * Math.cos(θ)
+          const ly = orbitR * 0.45 * Math.sin(θ)
+          x = pCX + lx * Math.cos(rot) - ly * Math.sin(rot) - 2.5
+          y = pCY + lx * Math.sin(rot) + ly * Math.cos(rot) - 2.5
+        } else if (orbitType === 'eccentric-c') {
+          const rot = orbitRotation ?? 0
+          x = pCX + orbitR * 0.4 * Math.cos(rot) + orbitR * Math.cos(θ) - 2.5
+          y = pCY + orbitR * 0.4 * Math.sin(rot) + orbitR * Math.sin(θ) - 2.5
+        } else {
+          x = pCX + orbitR * Math.cos(θ) - 2.5
+          y = pCY + orbitR * Math.sin(θ) - 2.5
+        }
+        updateNode(node.id, { position: { x, y } })
       }
+    }
+
+    // Anomaly orbital animation
+    for (const node of getNodes.value) {
+      if (node.type !== 'anomaly') continue
+      const { systemSlug, orbitDist, size } = node.data
+      if (!orbitDist) continue
+      const systemNode = findNode(`system-${systemSlug}`)
+      if (!systemNode) continue
+      const sysSize = parseFloat(systemNode.style?.width) || 400
+      const cx = systemNode.position.x + sysSize / 2
+      const cy = systemNode.position.y + sysSize / 2
+      const ω = SPEED * 0.4 / Math.pow(orbitDist, 1.5)
+      if (!(node.id in planetPhaseOffsets)) planetPhaseOffsets[node.id] = Math.random() * 2 * Math.PI
+      const a = planetPhaseOffsets[node.id] + ω * t
+      updateNode(node.id, {
+        position: {
+          x: cx + orbitDist * Math.cos(a) - (size ?? 60) / 2,
+          y: cy + orbitDist * Math.sin(a) - (size ?? 60) / 2,
+        }
+      })
     }
   }
   animFrame = requestAnimationFrame(animate)
@@ -261,6 +305,14 @@ onNodeClick(({ node }) => {
     selectedPlanetSlug.value = node.id
     selectedSystemSlug.value = null
     zoomTarget.value = { type: 'planet', slug: node.id }
+  }
+  if (node.type === 'anomaly') {
+    const parts = node.id.split('-')
+    const memberIndex = parseInt(parts[parts.length - 1], 10)
+    const systemSlug = parts.slice(1, -1).join('-')
+    selectedSystemSlug.value = systemSlug
+    selectedPlanetSlug.value = null
+    selectedBodyMemberIndex.value = memberIndex
   }
 })
 

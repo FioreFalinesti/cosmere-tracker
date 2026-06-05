@@ -17,6 +17,7 @@
           :stroke="ring.color"
           :stroke-width="ring.sw"
           stroke-opacity="0.3"
+          :transform="ring.tilt ? `rotate(${ring.tilt}, ${cx}, ${cy})` : undefined"
         />
       </svg>
 
@@ -105,12 +106,8 @@
         :style="{
           width: `${data.size}px`,
           height: `${data.size}px`,
-          background: data.uninhabited
-            ? `radial-gradient(circle at 40% 40%, ${data.color} 0%, ${data.colorDark} 60%, ${data.colorDark} 100%)`
-            : `radial-gradient(circle at 35% 35%, white 0%, ${data.color} 40%, ${data.colorDark} 100%)`,
-          boxShadow: data.uninhabited
-            ? `0 0 ${data.size * 0.15}px ${data.size * 0.04}px ${data.color}22`
-            : `0 0 ${data.size * 0.3}px ${data.size * 0.08}px ${data.color}33, 0 0 ${data.size * 0.7}px ${data.size * 0.05}px ${data.color}11`,
+          background: `radial-gradient(circle at 40% 40%, ${orbColor} 0%, ${orbColorDark} 60%, ${orbColorDark} 100%)`,
+          boxShadow: `0 0 ${data.size * 0.15}px ${data.size * 0.04}px ${orbColor}22`,
         }"
       />
 
@@ -122,20 +119,22 @@
         style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
       >
         <template v-for="(moon, mi) in data.moonOrbits" :key="mi">
-          <circle
-            v-if="!moon.isPolarOrbit"
-            :cx="cx" :cy="cy"
+          <line v-if="moon.orbitType === 'polar'"
+            :x1="cx + moon.orbitR * polarLineDir.cos" :y1="cy + moon.orbitR * polarLineDir.sin"
+            :x2="cx - moon.orbitR * polarLineDir.cos" :y2="cy - moon.orbitR * polarLineDir.sin"
+            stroke="white" stroke-opacity="0.03" stroke-width="0.75" />
+          <ellipse v-else-if="moon.orbitType === 'eccentric-a'"
+            :cx="cx" :cy="cy" :rx="moon.orbitR" :ry="moon.orbitR * 0.45"
+            :transform="`rotate(${(moon.orbitRotation * 180 / Math.PI).toFixed(1)}, ${cx}, ${cy})`"
+            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
+          <circle v-else-if="moon.orbitType === 'eccentric-c'"
+            :cx="cx + moon.orbitR * 0.4 * Math.cos(moon.orbitRotation)"
+            :cy="cy + moon.orbitR * 0.4 * Math.sin(moon.orbitRotation)"
             :r="moon.orbitR"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none"
-          />
-          <line
-            v-else
-            :x1="cx + moon.orbitR * polarLineDir.cos"
-            :y1="cy + moon.orbitR * polarLineDir.sin"
-            :x2="cx - moon.orbitR * polarLineDir.cos"
-            :y2="cy - moon.orbitR * polarLineDir.sin"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75"
-          />
+            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
+          <circle v-else
+            :cx="cx" :cy="cy" :r="moon.orbitR"
+            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
         </template>
       </svg>
 
@@ -168,6 +167,7 @@
           :stroke="ring.color"
           :stroke-width="ring.sw"
           stroke-opacity="0.65"
+          :transform="ring.tilt ? `rotate(${ring.tilt}, ${cx}, ${cy})` : undefined"
         />
       </svg>
 
@@ -216,19 +216,38 @@ const fontSize = computed(() => {
   return Math.max(4, Math.floor(available / (props.data.name.length * 0.6)))
 })
 
+// ── Planet orb color ─────────────────────────────────────────────────────────
+
+function desaturateHex(hex, amount = 0.65) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b)
+  const h = n => Math.round(n + (gray - n) * amount).toString(16).padStart(2, '0')
+  return `#${h(r)}${h(g)}${h(b)}`
+}
+
+const orbColor = computed(() =>
+  props.data.uninhabited ? desaturateHex(props.data.color) : props.data.color
+)
+const orbColorDark = computed(() =>
+  props.data.uninhabited ? desaturateHex(props.data.colorDark) : props.data.colorDark
+)
+
 // ── Saturn rings ──────────────────────────────────────────────────────────────
 
 const RING_COLORS = ['#ffffff', '#cccccc', '#e8e8e8', '#bbbbbb', '#d4d4d4']
 
 const rings = computed(() => {
-  const count = props.data.ringCount ?? 0
-  if (count <= 0) return []
-  const r = props.data.size / 2
-  const sw = Math.max(2, r * 0.1)
-  return Array.from({ length: count }, (_, i) => {
-    const rx = r * (1.28 + i * 0.22)
-    return { rx, ry: rx * 0.28, sw, color: RING_COLORS[i % RING_COLORS.length] }
-  })
+  const orbits = props.data.ringOrbits ?? []
+  if (!orbits.length) return []
+  return orbits.map((orb, i) => ({
+    rx: orb.orbitR,
+    ry: orb.orbitR * 0.28,
+    sw: orb.thickness ?? Math.max(2, props.data.size * 0.05),
+    color: RING_COLORS[i % RING_COLORS.length],
+    tilt: orb.tilt ?? 0,
+  }))
 })
 
 // ── Gas giant bands ───────────────────────────────────────────────────────────
