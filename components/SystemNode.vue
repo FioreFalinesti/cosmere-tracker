@@ -154,7 +154,6 @@ const beltRings = [
 const orbitItems = computed(() => {
   const types = props.data.memberTypes ?? Array(props.data.planetCount ?? 0).fill('planet')
   const lagrangePoints = props.data.memberLagrangePoints ?? []
-  const visible = props.data.memberVisible ?? []
   const distances = props.data.memberOrbitDistances
   const n = types.length
   if (n === 0) return []
@@ -162,7 +161,6 @@ const orbitItems = computed(() => {
   const outerR = autoOuterR.value
   return types.map((type, i) => {
     if (lagrangePoints[i]) return null
-    if (visible[i] === false) return null  // hidden planet — no orbit ring
     return {
       type,
       r: distances

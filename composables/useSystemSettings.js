@@ -2,6 +2,7 @@ import { collection, getDocs, doc, updateDoc, setDoc, onSnapshot } from 'firebas
 
 const systems = ref([])
 const initialized = ref(false)
+let unsubscribe = null
 
 export function useSystemSettings() {
   async function init() {
@@ -13,11 +14,12 @@ export function useSystemSettings() {
     initialized.value = true
 
     // Real-time updates after initial load
-    onSnapshot(
+    unsubscribe = onSnapshot(
       collection(db, 'planetary_systems'),
       (snap) => { systems.value = snap.docs.map(d => ({ slug: d.id, ...d.data() })) },
       (err) => console.error('[systems snapshot]', err)
     )
+    if (typeof window !== 'undefined') window.addEventListener('beforeunload', () => unsubscribe?.())
   }
 
   async function setSystemName(slug, name) {
@@ -104,13 +106,6 @@ export function useSystemSettings() {
     )
   }
 
-  async function setSystemSize(slug, size) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.size = size
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { size })
-  }
-
   async function updateSystemMembers(slug, members) {
     const system = systems.value.find(s => s.slug === slug)
     if (system) system.members = members
@@ -132,34 +127,6 @@ export function useSystemSettings() {
     await updateDoc(doc(db, 'planetary_systems', slug), { star_color: color })
   }
 
-  async function setBinary(slug, value) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.is_binary = value
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { is_binary: value })
-  }
-
-  async function setSecondaryStarName(slug, name) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.secondary_star_name = name
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { secondary_star_name: name })
-  }
-
-  async function setSecondaryStarColor(slug, color) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.secondary_star_color = color
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { secondary_star_color: color })
-  }
-
-  async function setSecondaryStarSize(slug, value) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.secondary_star_size = value
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { secondary_star_size: value })
-  }
-
   async function setSystemWiki(slug, url) {
     const system = systems.value.find(s => s.slug === slug)
     if (system) system.wiki = url
@@ -179,20 +146,6 @@ export function useSystemSettings() {
     if (system) system.star_particulate_ring = value
     const db = useFirestore()
     await updateDoc(doc(db, 'planetary_systems', slug), { star_particulate_ring: value })
-  }
-
-  async function setSecondaryStarParticulateRing(slug, value) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.secondary_star_particulate_ring = value
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { secondary_star_particulate_ring: value })
-  }
-
-  async function setSecondaryStarOrbitFraction(slug, fraction) {
-    const system = systems.value.find(s => s.slug === slug)
-    if (system) system.secondary_star_orbit_fraction = fraction
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planetary_systems', slug), { secondary_star_orbit_fraction: fraction })
   }
 
   async function setMemberLagrangePoint(systemSlug, memberIndex, lagrangePoint) {
@@ -221,5 +174,5 @@ export function useSystemSettings() {
     systems.value = [...systems.value, { slug: newSlug, ...newSystem }]
   }
 
-  return { systems, init, cloneSystem, batchUpdateSystemPositions, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setBinary, setSecondaryStarName, setSecondaryStarColor, setSecondaryStarSize, setSecondaryStarParticulateRing, setSecondaryStarOrbitFraction, setMemberLagrangePoint }
+  return { systems, init, cloneSystem, batchUpdateSystemPositions, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint }
 }

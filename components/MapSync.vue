@@ -6,15 +6,14 @@ import { resolveOrbitDistance } from '~/utils/orbitUtils'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
-  edges: { type: Array, required: true },
   editPositions: { type: Boolean, default: false },
 })
 
-const { setNodes, setEdges, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
-const { planets, batchUpdatePositions, computeOrbitRadii } = usePlanetSettings()
-const { readSlugs } = useReadBooks()
+const { setNodes, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
+const { planets, computeOrbitRadii } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
-const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, editCancelled, polarOrbitAngles } = useMapState()
+const { events: timelineEvents, nowYear } = useTimelineEvents()
+const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, editCancelled, polarOrbitAngles, orbitEventPreview } = useMapState()
 
 const originalPositions = ref({})
 
@@ -53,8 +52,6 @@ watch(() => props.nodes, nodes => {
     setNodes(nodes.map(n => ({ ...n, position: live[n.id] ?? n.position })))
   }
 }, { immediate: true, deep: false })
-
-watch(() => props.edges, edges => setEdges(edges), { immediate: true, deep: false })
 
 // ── Orbital animation ─────────────────────────────────────────────────────────
 const SPEED = 0.025
@@ -108,7 +105,10 @@ function animate() {
         const planet = planets.value.find(p => p.slug === slug)
         if (!planet) return
         const baseline = planet.orbit_distance ?? autoOrbitRadii[i]
-        const orbitR = resolveOrbitDistance(planet.orbit_events ?? [], baseline, innerR, autoOuterR, readSlugs.value)
+        const preview = orbitEventPreview.value
+        const orbitR = (preview && preview.orbit && preview.planetSlug === slug)
+          ? (preview.showAfter ? preview.orbit.after : (preview.orbit.before ?? baseline))
+          : resolveOrbitDistance(planet.orbit_events ?? [], baseline, timelineEvents.value, nowYear.value)
         const gravity = planet.gravity_multiplier ?? 1
         const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
         if (!(slug in planetPhaseOffsets)) planetPhaseOffsets[slug] = Math.random() * 2 * Math.PI
@@ -126,13 +126,14 @@ function animate() {
 
     // Secondary star orbital animation + Lagrange planet co-rotation
     for (const system of systems.value) {
-      if (!system.is_binary) continue
       const geo = orbitGeometry(system)
       if (!geo) continue
       const { innerR, autoOuterR, cx, cy, allMembers } = geo
 
-      // Find first star-type member for Lagrange co-rotation reference
+      // A system is binary if it has a star-type member; also used as the
+      // Lagrange co-rotation reference below.
       const starMemberIdx = allMembers.findIndex(m => typeof m === 'object' && m.type === 'star')
+      if (starMemberIdx === -1) continue
       let secondaryAngle = -Math.PI / 2
 
       // Animate each star-type member as a secondary star node
@@ -176,7 +177,8 @@ function animate() {
     }
 
     // Moon animation
-    for (const node of getNodes.value) {
+    const allNodes = getNodes.value
+    for (const node of allNodes) {
       if (node.type !== 'moon') continue
       const { parentSlug, index, count, planetSize, phaseOffset, isPolarOrbit, orbitType, orbitRotation, manualOrbitR } = node.data
       const parentNode = findNode(parentSlug)
@@ -230,7 +232,7 @@ function animate() {
     }
 
     // Anomaly orbital animation
-    for (const node of getNodes.value) {
+    for (const node of allNodes) {
       if (node.type !== 'anomaly') continue
       const { systemSlug, orbitDist, size } = node.data
       if (!orbitDist) continue
@@ -253,8 +255,24 @@ function animate() {
   animFrame = requestAnimationFrame(animate)
 }
 
-onMounted(() => { animFrame = requestAnimationFrame(animate) })
-onUnmounted(() => { if (animFrame) cancelAnimationFrame(animFrame) })
+function startAnimation() {
+  if (!animFrame) animFrame = requestAnimationFrame(animate)
+}
+function stopAnimation() {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null }
+}
+function onVisibilityChange() {
+  document.hidden ? stopAnimation() : startAnimation()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  startAnimation()
+})
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  stopAnimation()
+})
 // ─────────────────────────────────────────────────────────────────────────────
 
 function zoomToSystem(systemNode, panelOpen = false) {

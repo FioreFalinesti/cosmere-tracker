@@ -7,32 +7,13 @@ const selectedPlanetSlug = ref(null)
 const selectedSystemSlug = ref(null)
 const selectedBodyMemberIndex = ref(null)
 const zoomTarget = ref(null) // { type: 'planet'|'system', slug }
+const orbitEventPreview = ref(null) // { planetSlug, orbit: {before,after}|null, color: {before,after}|null, showAfter } | null — live before/after preview while editing an orbit event
 
-const HIDDEN_PLANETS_KEY = 'cosmere-tracker:hidden-planets'
-const hiddenPlanetSlugs = ref([])
-let hiddenPlanetsInitialized = false
+const TIMELINE_NEWEST_FIRST_KEY = 'cosmere-tracker:timeline-newest-first'
+const timelineNewestFirst = ref(false)
+let timelineOrderInitialized = false
 
 export function useMapState() {
-  function initHiddenPlanets() {
-    if (hiddenPlanetsInitialized) return
-    try {
-      const stored = localStorage.getItem(HIDDEN_PLANETS_KEY)
-      hiddenPlanetSlugs.value = stored ? JSON.parse(stored) : []
-    } catch {
-      hiddenPlanetSlugs.value = []
-    }
-    hiddenPlanetsInitialized = true
-  }
-
-  function togglePlanetVisibility(slug) {
-    if (hiddenPlanetSlugs.value.includes(slug)) {
-      hiddenPlanetSlugs.value = hiddenPlanetSlugs.value.filter(s => s !== slug)
-    } else {
-      hiddenPlanetSlugs.value = [...hiddenPlanetSlugs.value, slug]
-    }
-    localStorage.setItem(HIDDEN_PLANETS_KEY, JSON.stringify(hiddenPlanetSlugs.value))
-  }
-
   function startEdit() {
     editCancelled.value = false
     editPositions.value = true
@@ -48,5 +29,20 @@ export function useMapState() {
     editPositions.value = false
   }
 
-  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, polarOrbitAngles, hiddenPlanetSlugs, initHiddenPlanets, togglePlanetVisibility, startEdit, saveEdit, cancelEdit }
+  function initTimelineOrder() {
+    if (timelineOrderInitialized) return
+    try {
+      timelineNewestFirst.value = localStorage.getItem(TIMELINE_NEWEST_FIRST_KEY) === 'true'
+    } catch {
+      timelineNewestFirst.value = false
+    }
+    timelineOrderInitialized = true
+  }
+
+  function setTimelineNewestFirst(value) {
+    timelineNewestFirst.value = value
+    localStorage.setItem(TIMELINE_NEWEST_FIRST_KEY, String(value))
+  }
+
+  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, polarOrbitAngles, timelineNewestFirst, orbitEventPreview, startEdit, saveEdit, cancelEdit, initTimelineOrder, setTimelineNewestFirst }
 }

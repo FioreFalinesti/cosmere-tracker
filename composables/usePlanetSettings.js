@@ -11,6 +11,19 @@ function darkenHex(hex, factor = 0.3) {
 
 const planets = ref([])
 const initialized = ref(false)
+let unsubscribe = null
+
+// Orbit events predating the switch to Timeline-Event-triggered overrides
+// have no `id` — backfill one so each is distinguishable (e.g. by the
+// "Orbit Events to Trigger" checklist, which keys off this id).
+async function backfillOrbitEventIds(planet) {
+  const events = planet.orbit_events ?? []
+  if (!events.some(ev => !ev.id)) return events
+  const fixed = events.map(ev => ev.id ? ev : { ...ev, id: crypto.randomUUID() })
+  const db = useFirestore()
+  await updateDoc(doc(db, 'planets', planet.slug), { orbit_events: fixed })
+  return fixed
+}
 
 export function usePlanetSettings() {
   async function init() {
@@ -21,16 +34,17 @@ export function usePlanetSettings() {
     planets.value = snap.docs.map(d => ({ slug: d.id, ...d.data() }))
     initialized.value = true
 
+    await Promise.all(planets.value.map(async p => {
+      p.orbit_events = await backfillOrbitEventIds(p)
+    }))
+
     // Real-time updates after initial load
-    onSnapshot(
+    unsubscribe = onSnapshot(
       query(collection(db, 'planets'), orderBy('name')),
       (snap) => { planets.value = snap.docs.map(d => ({ slug: d.id, ...d.data() })) },
       (err) => console.error('[planets snapshot]', err)
     )
-  }
-
-  function getColor(slug) {
-    return planets.value.find(p => p.slug === slug)?.color ?? '#ffffff'
+    if (typeof window !== 'undefined') window.addEventListener('beforeunload', () => unsubscribe?.())
   }
 
   async function setColor(slug, color) {
@@ -40,23 +54,13 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { color })
   }
 
-  async function batchUpdatePositions(updates) {
-    updates.forEach(({ slug, map_x, map_y }) => {
-      const planet = planets.value.find(p => p.slug === slug)
-      if (planet) { planet.map_x = map_x; planet.map_y = map_y }
-    })
-    const db = useFirestore()
-    await Promise.all(
-      updates.map(({ slug, map_x, map_y }) =>
-        updateDoc(doc(db, 'planets', slug), { map_x, map_y })
-      )
-    )
-  }
-
-  function nodeData(planet, readSlugs = []) {
+  function nodeData(planet, timelineEvents, nowYear, preview) {
     const isGasGiant = planet.is_gas_giant ?? false
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
-    const color = resolveColor(planet.orbit_events ?? [], planet.color, readSlugs)
+    let color = resolveColor(planet.orbit_events ?? [], planet.color, timelineEvents, nowYear)
+    if (preview && preview.color && preview.planetSlug === planet.slug) {
+      color = preview.showAfter ? preview.color.after : preview.color.before
+    }
     return { name: planet.name, color, colorDark: darkenHex(color), size, sizeMultiplier: planet.size_multiplier ?? 1, uninhabited: planet.uninhabited ?? false, moonCount: (planet.moons ?? []).length, isGasGiant, isDwarfPlanet: planet.is_dwarf_planet ?? false }
   }
 
@@ -79,13 +83,6 @@ export function usePlanetSettings() {
     if (planet) planet.size_multiplier = value
     const db = useFirestore()
     await updateDoc(doc(db, 'planets', slug), { size_multiplier: value })
-  }
-
-  async function setRingCount(slug, value) {
-    const planet = planets.value.find(p => p.slug === slug)
-    if (planet) planet.ring_count = value
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planets', slug), { ring_count: value })
   }
 
   async function setUninhabited(slug, value) {
@@ -138,13 +135,6 @@ export function usePlanetSettings() {
     if (planet) planet.moon_orbit_distances = distances
     const db = useFirestore()
     await updateDoc(doc(db, 'planets', slug), { moon_orbit_distances: distances })
-  }
-
-  async function setPolarOrbitMoons(slug, moons) {
-    const planet = planets.value.find(p => p.slug === slug)
-    if (planet) planet.polar_orbit_moons = moons
-    const db = useFirestore()
-    await updateDoc(doc(db, 'planets', slug), { polar_orbit_moons: moons })
   }
 
   async function setOrbitDistance(slug, distance) {
@@ -233,9 +223,9 @@ export function usePlanetSettings() {
     const db = useFirestore()
     await setDoc(doc(collection(db, 'planets'), slug), {
       name, color: '#888888', size_multiplier: 1.0, gravity_multiplier: 1.0,
-      ring_count: 0, wiki: '', uninhabited: false, is_gas_giant: false, is_dwarf_planet: false, moons: [], orbit_events: [],
+      wiki: '', uninhabited: false, is_gas_giant: false, is_dwarf_planet: false, moons: [], orbit_events: [],
     })
   }
 
-  return { planets, init, getColor, setColor, setWiki, setSizeMultiplier, setRingCount, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setPolarOrbitMoons, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, batchUpdatePositions, computeOrbitRadii, setPlanetName, renameMoon }
+  return { planets, init, setColor, setWiki, setSizeMultiplier, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, computeOrbitRadii, setPlanetName, renameMoon }
 }

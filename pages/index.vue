@@ -7,7 +7,7 @@
       :max-zoom="10"
       class="cosmere-map"
     >
-      <MapSync :nodes="visibleNodes" :edges="visibleEdges" :edit-positions="editPositions" />
+      <MapSync :nodes="visibleNodes" :edit-positions="editPositions" />
       <Background
         variant="dots"
         :gap="40"
@@ -50,26 +50,25 @@ import { getMoonOrbitType, getSatelliteType } from '~/utils/satelliteUtils'
 definePageMeta({ layout: 'map' })
 
 const { books, load } = useCosmere()
-const { readSlugs, init: initRead } = useReadBooks()
-const { planets, init: initPlanets, nodeData, batchUpdatePositions, computeOrbitRadii } = usePlanetSettings()
-const { systems, init: initSystems, batchUpdateSystemPositions } = useSystemSettings()
-const { editPositions, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, hiddenPlanetSlugs, initHiddenPlanets } = useMapState()
-initHiddenPlanets()
+const { planets, init: initPlanets, nodeData, computeOrbitRadii } = usePlanetSettings()
+const { systems, init: initSystems } = useSystemSettings()
+const { editPositions, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
+const { events: timelineEvents, init: initEvents, nowYear, eventYear } = useTimelineEvents()
 
 await load()
-await initRead()
 await initPlanets()
 await initSystems()
+await initEvents()
 
-
-const visibleEdges = ref([])
 
 function planetSize(p) {
   return Math.floor(Math.max(0.1, p.size_multiplier ?? 1) * 64)
 }
 
-function planetBySlug(slug) {
-  return planets.value.find(p => p.slug === slug)
+// A system is revealed once the timeline scrubber has reached a timeline
+// event linked to it (directly, or via a linked planet's auto-filled system).
+function isSystemRevealed(systemSlug) {
+  return timelineEvents.value.some(ev => ev.system_slug === systemSlug && eventYear(ev) <= nowYear.value)
 }
 
 // Vue Flow requires parent nodes to appear before their children
@@ -80,7 +79,7 @@ const visibleNodes = computed(() => {
   for (const system of systems.value) {
     const planetSlugs = (system.members ?? system.planets ?? []).filter(m => typeof m === 'string' ? true : m.type === 'planet').map(m => typeof m === 'string' ? m : m.slug)
     const allMembers = planetSlugs.map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
-    const hasVisible = system.always_visible || allMembers.some(p => !hiddenPlanetSlugs.value.includes(p.slug))
+    const hasVisible = system.always_visible || (allMembers.length > 0 && isSystemRevealed(system.slug))
     if (!hasVisible) continue
 
     const inhabitedMembers = allMembers.filter(p => p.uninhabited !== true)
@@ -161,7 +160,11 @@ const visibleNodes = computed(() => {
       }
       const planet = planets.value.find(p => p.slug === mSlug)
       const baseline = planet?.orbit_distance ?? defaultR
-      return resolveOrbitDistance(planet?.orbit_events ?? [], baseline, innerR, autoOuterR, readSlugs.value)
+      const preview = orbitEventPreview.value
+      if (preview && preview.orbit && preview.planetSlug === mSlug) {
+        return preview.showAfter ? preview.orbit.after : (preview.orbit.before ?? baseline)
+      }
+      return resolveOrbitDistance(planet?.orbit_events ?? [], baseline, timelineEvents.value, nowYear.value)
     })
 
     if (isBinary) secondaryOrbitR = memberOrbitDistances[starMemberIdx] ?? innerR + 0.65 * (autoOuterR - innerR)
@@ -186,12 +189,6 @@ const visibleNodes = computed(() => {
         slug: system.slug,
         planetCount: allMembers.length,
         memberTypes: systemMemberList.map(m => typeof m === 'string' ? 'planet' : m.type),
-        memberVisible: systemMemberList.map(m => {
-          const slug = typeof m === 'string' ? m : m.slug
-          const type = typeof m === 'string' ? 'planet' : m.type
-          if (type !== 'planet') return true
-          return !hiddenPlanetSlugs.value.includes(slug)
-        }),
         memberOrbitDistances,
         memberLagrangePoints,
       },
@@ -233,7 +230,7 @@ const visibleNodes = computed(() => {
       const planet = planets.value.find(p => p.slug === slug)
       const baseR = planet?.orbit_distance ?? defaultR
       const eventRs = (planet?.orbit_events ?? []).map(ev =>
-        ev.orbit_distance ?? baseR
+        ev.orbit_after ?? baseR
       )
       return [baseR, ...eventRs]
     })
@@ -270,7 +267,6 @@ const visibleNodes = computed(() => {
       if (memberType !== 'planet') return
       const planet = planets.value.find(p => p.slug === slug)
       if (!planet) return
-      if (hiddenPlanetSlugs.value.includes(slug)) return
       const pSize = planetSize(planet)
       const lagrangePoint = memberLagrangePoints[i]
 
@@ -332,7 +328,7 @@ const visibleNodes = computed(() => {
           x: sysCX + orbitR * Math.cos(posAngle) - pSize / 2,
           y: sysCY + orbitR * Math.sin(posAngle) - pSize / 2,
         },
-        data: { ...nodeData(planet, readSlugs.value), systemSlug: system.slug, memberIndex: i, memberCount: n, maxMoonOrbitR, moonOrbits, ringOrbits },
+        data: { ...nodeData(planet, timelineEvents.value, nowYear.value, orbitEventPreview.value), systemSlug: system.slug, memberIndex: i, memberCount: n, maxMoonOrbitR, moonOrbits, ringOrbits },
       })
 
       // Moon nodes — only for non-ring satellites

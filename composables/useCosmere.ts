@@ -7,7 +7,6 @@ export interface Book {
   series: string
   published_on: string
   release_order: number
-  read?: boolean
   planets: string[]
 }
 
@@ -37,6 +36,7 @@ const books = ref<Book[]>([])
 const characters = ref<Character[]>([])
 const appearances = ref<Appearance[]>([])
 const loaded = ref(false)
+let unsubscribe: (() => void) | null = null
 
 export function useCosmere(): CosmereStore {
   async function load() {
@@ -55,11 +55,12 @@ export function useCosmere(): CosmereStore {
     loaded.value = true
 
     // Real-time updates after initial load
-    onSnapshot(
+    unsubscribe = onSnapshot(
       query(collection(db, 'books'), orderBy('release_order')),
       (snap) => { books.value = snap.docs.map(d => ({ slug: d.id, ...d.data() } as Book)) },
       (err) => console.error('[books snapshot]', err)
     )
+    if (typeof window !== 'undefined') window.addEventListener('beforeunload', () => unsubscribe?.())
   }
 
   return { books, characters, appearances, loaded, load }

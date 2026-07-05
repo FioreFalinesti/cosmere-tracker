@@ -19,30 +19,18 @@
     </h2>
 
     <div class="flex flex-col gap-3">
-      <template v-for="{ book, appearance } in allAppearances" :key="book.slug">
-        <NuxtLink
-          v-if="isRead(book.slug)"
-          :to="`/books/${book.slug}`"
-          class="group flex items-center justify-between bg-surface-800 border border-surface-700 rounded-xl px-5 py-4 hover:border-accent-500/50 hover:bg-surface-700 transition-all"
-        >
-          <div>
-            <p class="font-medium text-blue-50 group-hover:text-accent-400 transition-colors">{{ book.title }}</p>
-            <p class="text-sm text-indigo-400">{{ book.series }} · {{ book.published_on.slice(0, 4) }}</p>
-          </div>
-          <RoleBadge :role="appearance.role" />
-        </NuxtLink>
-
-        <div
-          v-else
-          class="flex items-center justify-between bg-surface-800/50 border border-surface-700/50 rounded-xl px-5 py-4 opacity-50"
-        >
-          <div>
-            <p class="font-medium text-indigo-300">{{ book.title }}</p>
-            <p class="text-sm text-indigo-500">{{ book.series }} · {{ book.published_on.slice(0, 4) }}</p>
-          </div>
-          <span class="text-xs text-indigo-500 italic">Unread</span>
+      <NuxtLink
+        v-for="{ book, appearance } in allAppearances"
+        :key="book.slug"
+        :to="`/books/${book.slug}`"
+        class="group flex items-center justify-between bg-surface-800 border border-surface-700 rounded-xl px-5 py-4 hover:border-accent-500/50 hover:bg-surface-700 transition-all"
+      >
+        <div>
+          <p class="font-medium text-blue-50 group-hover:text-accent-400 transition-colors">{{ book.title }}</p>
+          <p class="text-sm text-indigo-400">{{ book.series }} · {{ book.published_on.slice(0, 4) }}</p>
         </div>
-      </template>
+        <RoleBadge :role="appearance.role" />
+      </NuxtLink>
     </div>
   </div>
 
@@ -52,7 +40,6 @@
 <script setup>
 const route = useRoute()
 const { characters, books, appearances, load } = useCosmere()
-const { isRead } = useReadBooks()
 await load()
 
 const character = computed(() => characters.value.find(c => c.id === route.params.id))
@@ -65,6 +52,6 @@ const allAppearances = computed(() =>
       book: books.value.find(b => b.slug === a.bookId),
     }))
     .filter(x => x.book)
-    .sort((a, b) => a.book.release_order - b.book.order)
+    .sort((a, b) => a.book.release_order - b.book.release_order)
 )
 </script>

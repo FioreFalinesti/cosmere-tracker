@@ -512,49 +512,108 @@
         <!-- Timeline Events section -->
         <div class="px-5 py-4 border-b border-surface-700">
           <div class="flex items-center justify-between mb-3">
-            <p class="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest">Timeline Events</p>
-            <button class="text-xs text-indigo-500 hover:text-indigo-300 transition-colors" @click="timelineEventsEditing = !timelineEventsEditing">
-              {{ timelineEventsEditing ? 'Done' : 'Edit' }}
+            <p class="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest">Orbit Events</p>
+            <button class="text-xs text-indigo-500 hover:text-indigo-300 transition-colors" @click="orbitEventsEditing = !orbitEventsEditing">
+              {{ orbitEventsEditing ? 'Done' : 'Edit' }}
             </button>
           </div>
-          <div class="space-y-1 mb-2">
-            <div v-for="(ev, i) in (selectedPlanet.orbit_events ?? [])" :key="i" class="flex items-center gap-2">
-              <span class="flex-1 text-xs font-mono text-indigo-200 truncate">{{ ev.trigger_book }}</span>
-              <template v-if="ev.type === 'color'">
-                <div class="w-3 h-3 rounded-full shrink-0" :style="{ background: ev.color }" />
-                <span class="text-xs font-mono text-indigo-400 shrink-0">{{ ev.color }}</span>
-              </template>
-              <span v-else class="text-xs font-mono text-indigo-400 shrink-0">→ {{ ev.orbit_distance }}px</span>
-              <button v-if="timelineEventsEditing" class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="deleteTimelineEvent(i)">×</button>
+          <div class="space-y-1.5 mb-2">
+            <div v-for="ev in (selectedPlanet.orbit_events ?? [])" :key="ev.id" class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span v-if="!orbitEventsEditing" class="flex-1 text-[11px] text-indigo-500 truncate">{{ triggerLabel(ev.id) }}</span>
+                <select v-else :value="triggerSelectValue(ev.id)" @change="onTriggerChange(ev.id, $event)"
+                  class="flex-1 min-w-0 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-[11px] text-indigo-200 focus:outline-none focus:border-accent-500 transition-colors">
+                  <option value="">Unlinked</option>
+                  <option v-for="te in eligibleTimelineEvents" :key="te.slug" :value="te.slug">{{ te.title || `Untitled (${te.year_start ?? '—'})` }}</option>
+                  <option value="__new__">+ New event…</option>
+                </select>
+                <button v-if="orbitEventsEditing" class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="deleteOrbitEvent(ev.id)">×</button>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <template v-if="ev.color_after != null">
+                  <div class="w-3 h-3 rounded-full shrink-0" :style="{ background: ev.color_before }" />
+                  <span class="text-xs text-indigo-600 shrink-0">→</span>
+                  <div class="w-3 h-3 rounded-full shrink-0" :style="{ background: ev.color_after }" />
+                </template>
+                <span v-if="ev.orbit_after != null" class="text-xs font-mono text-indigo-400 shrink-0">{{ ev.orbit_before ?? 'auto' }}px → {{ ev.orbit_after }}px</span>
+              </div>
+              <div v-if="creatingEventFor === ev.id" class="pl-2 border-l-2 border-accent-600/40 space-y-1.5">
+                <div class="flex gap-1">
+                  <button type="button" class="flex-1 px-2 py-1 text-[10px] rounded transition-colors"
+                    :class="newLinkedEventDraft.type === 'instance' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="newLinkedEventDraft.type = 'instance'">Instance</button>
+                  <button type="button" class="flex-1 px-2 py-1 text-[10px] rounded transition-colors"
+                    :class="newLinkedEventDraft.type === 'range' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="newLinkedEventDraft.type = 'range'">Range</button>
+                </div>
+                <div class="flex gap-1.5">
+                  <input v-model="newLinkedEventDraft.yearStart" type="number" :placeholder="newLinkedEventDraft.type === 'range' ? 'Start' : 'Year'"
+                    class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
+                  <input v-if="newLinkedEventDraft.type === 'range'" v-model="newLinkedEventDraft.yearEnd" type="number" placeholder="End"
+                    class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
+                  <input v-model="newLinkedEventDraft.title" type="text" placeholder="Title (optional)"
+                    class="flex-1 min-w-0 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
+                </div>
+                <div class="flex gap-2">
+                  <button class="flex-1 px-2 py-1 bg-accent-600 hover:bg-accent-500 text-white text-[10px] rounded transition-colors disabled:opacity-50"
+                    :disabled="newLinkedEventDraft.yearStart === ''"
+                    @click="createLinkedEvent(ev.id)">Create &amp; Link</button>
+                  <button type="button" class="px-2 py-1 bg-surface-700 hover:bg-surface-600 text-indigo-300 text-[10px] rounded transition-colors"
+                    @click="creatingEventFor = null">Cancel</button>
+                </div>
+              </div>
+              <div v-if="orbitEventsEditing" class="flex justify-end">
+                <div class="inline-flex rounded overflow-hidden">
+                  <button class="px-2 py-0.5 text-[10px] transition-colors"
+                    :class="isPreviewing(ev.id, false) ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="setPreview(ev.id, false)">Before</button>
+                  <button class="px-2 py-0.5 text-[10px] transition-colors"
+                    :class="isPreviewing(ev.id, true) ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="setPreview(ev.id, true)">After</button>
+                </div>
+              </div>
             </div>
             <p v-if="!(selectedPlanet.orbit_events ?? []).length" class="text-sm text-indigo-600 italic">None</p>
           </div>
-          <div v-if="timelineEventsEditing" class="space-y-2 mt-2">
-            <select v-model="newEventBook"
-              class="w-full bg-surface-700 border border-surface-600 rounded-lg px-2 py-1.5 text-xs text-blue-100 focus:outline-none focus:border-accent-500 transition-colors">
-              <option value="" disabled>Select trigger book…</option>
-              <option v-for="book in books" :key="book.slug" :value="book.slug">{{ book.title }}</option>
-            </select>
-            <div class="flex gap-1 mb-1">
-              <button v-for="t in [{ v: 'orbit', l: 'Orbit' }, { v: 'color', l: 'Color' }]" :key="t.v"
-                class="flex-1 px-2 py-1 text-xs rounded transition-colors"
-                :class="newEventType === t.v ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
-                @click="newEventType = t.v">{{ t.l }}</button>
-            </div>
-            <div class="flex gap-2 items-center">
-              <template v-if="newEventType === 'orbit'">
-                <span class="text-xs text-indigo-400 shrink-0">Distance</span>
-                <input v-model="newEventOrbitDistance" type="number" step="10" min="0" placeholder="px"
+          <div v-if="orbitEventsEditing" class="space-y-2 mt-2">
+            <label class="flex items-center gap-2 text-xs text-indigo-300 cursor-pointer">
+              <input v-model="newEventHasOrbit" type="checkbox" class="accent-accent-600" />
+              Orbit Distance
+            </label>
+            <template v-if="newEventHasOrbit">
+              <div class="flex gap-2 items-center pl-5">
+                <span class="text-xs text-indigo-400 w-12 shrink-0">Before</span>
+                <input v-model="newEventOrbitBefore" type="number" step="10" min="0" placeholder="auto"
                   class="w-20 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
-              </template>
-              <template v-else>
-                <div v-if="newEventColor" class="w-4 h-4 rounded-full shrink-0" :style="{ background: '#' + newEventColor }" />
+              </div>
+              <div class="flex gap-2 items-center pl-5">
+                <span class="text-xs text-indigo-400 w-12 shrink-0">After</span>
+                <input v-model="newEventOrbitAfter" type="number" step="10" min="0" placeholder="px"
+                  class="w-20 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
+              </div>
+            </template>
+            <label class="flex items-center gap-2 text-xs text-indigo-300 cursor-pointer">
+              <input v-model="newEventHasColor" type="checkbox" class="accent-accent-600" />
+              Color
+            </label>
+            <template v-if="newEventHasColor">
+              <div class="flex gap-2 items-center pl-5">
+                <span class="text-xs text-indigo-400 w-12 shrink-0">Before</span>
+                <div v-if="newEventColorBefore" class="w-4 h-4 rounded-full shrink-0" :style="{ background: '#' + newEventColorBefore }" />
                 <span class="text-xs font-mono text-indigo-500 shrink-0">#</span>
-                <input v-model="newEventColor" type="text" maxlength="6" placeholder="rrggbb"
+                <input v-model="newEventColorBefore" type="text" maxlength="6" placeholder="rrggbb"
                   class="w-24 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
-              </template>
-              <button class="flex-1 px-3 py-1 bg-accent-600 hover:bg-accent-500 text-white text-xs rounded-lg transition-colors" @click="addTimelineEvent">Add</button>
-            </div>
+              </div>
+              <div class="flex gap-2 items-center pl-5">
+                <span class="text-xs text-indigo-400 w-12 shrink-0">After</span>
+                <div v-if="newEventColorAfter" class="w-4 h-4 rounded-full shrink-0" :style="{ background: '#' + newEventColorAfter }" />
+                <span class="text-xs font-mono text-indigo-500 shrink-0">#</span>
+                <input v-model="newEventColorAfter" type="text" maxlength="6" placeholder="rrggbb"
+                  class="w-24 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
+              </div>
+            </template>
+            <button class="w-full px-3 py-1 bg-accent-600 hover:bg-accent-500 text-white text-xs rounded-lg transition-colors disabled:opacity-50"
+              :disabled="!newEventHasOrbit && !newEventHasColor" @click="addOrbitEvent">Add</button>
           </div>
         </div>
 
@@ -586,22 +645,15 @@
 <script setup>
 import { getSatelliteType, getMoonOrbitType } from '~/utils/satelliteUtils'
 
-const { books } = useCosmere()
-const { planets, setPlanetName, setColor, setWiki, setSizeMultiplier, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setPolarOrbitMoons, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, renameMoon } = usePlanetSettings()
+const { planets, setPlanetName, setColor, setWiki, setSizeMultiplier, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, renameMoon } = usePlanetSettings()
 const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint } = useSystemSettings()
-const { selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget } = useMapState()
+const { selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
+const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent } = useTimelineEvents()
 
 // ── Derived state ────────────────────────────────────────────────────────────
 
 const selectedSystem = computed(() =>
   systems.value.find(s => s.slug === selectedSystemSlug.value) ?? null
-)
-
-const selectedSystemPlanets = computed(() =>
-  (selectedSystem.value?.members ?? [])
-    .filter(m => m.type === 'planet')
-    .map(m => planets.value.find(p => p.slug === m.slug))
-    .filter(Boolean)
 )
 
 const selectedBodyMember = computed(() =>
@@ -986,41 +1038,159 @@ async function onSatelliteTiltChange(moonName, event) {
   await setSatelliteTilt(selectedPlanet.value.slug, tilts)
 }
 
-// ── Timeline events ───────────────────────────────────────────────────────────
+// ── Orbit events ───────────────────────────────────────────────────────────
+// Orbit events are no longer tied to a book directly — a Timeline Event
+// (instance or range) references one or more of a planet's orbit events via
+// its own orbit_event_ids field, set from the Timeline Event form.
 
-const timelineEventsEditing = ref(false)
-const newEventBook = ref('')
-const newEventType = ref('orbit')
-const newEventOrbitDistance = ref('')
-const newEventColor = ref('')
-watch(selectedPlanetSlug, () => {
-  timelineEventsEditing.value = false
-  newEventBook.value = ''
-  newEventOrbitDistance.value = ''
-  newEventColor.value = ''
-})
-async function deleteTimelineEvent(index) {
-  const events = (selectedPlanet.value.orbit_events ?? []).filter((_, i) => i !== index)
-  await setTimelineEvents(selectedPlanet.value.slug, events)
+const orbitEventsEditing = ref(false)
+const newEventHasOrbit = ref(false)
+const newEventHasColor = ref(false)
+const newEventOrbitBefore = ref('')
+const newEventOrbitAfter = ref('')
+const newEventColorBefore = ref('')
+const newEventColorAfter = ref('')
+const previewingId = ref(null)
+const creatingEventFor = ref(null)
+const newLinkedEventDraft = reactive({ type: 'instance', title: '', yearStart: '', yearEnd: '' })
+
+function resetOrbitEventDraft() {
+  newEventHasOrbit.value = false
+  newEventHasColor.value = false
+  newEventOrbitBefore.value = ''
+  newEventOrbitAfter.value = ''
+  // Default "before" to the planet's current color — usually that's exactly
+  // what you mean, and only the "after" needs to be typed.
+  newEventColorBefore.value = (selectedPlanet.value?.color ?? '#888888').replace('#', '')
+  newEventColorAfter.value = ''
 }
-async function addTimelineEvent() {
-  const bookSlug = newEventBook.value
-  if (!bookSlug) return
-  let entry
-  if (newEventType.value === 'orbit') {
-    const distance = parseInt(newEventOrbitDistance.value, 10)
-    if (isNaN(distance) || distance <= 0) return
-    entry = { trigger_book: bookSlug, type: 'orbit', orbit_distance: distance }
-  } else {
-    const hex = '#' + newEventColor.value
-    if (!/^#[0-9a-f]{6}$/i.test(hex)) return
-    entry = { trigger_book: bookSlug, type: 'color', color: hex }
+
+watch(selectedPlanetSlug, () => {
+  orbitEventsEditing.value = false
+  resetOrbitEventDraft()
+  previewingId.value = null
+  orbitEventPreview.value = null
+  creatingEventFor.value = null
+})
+
+watch(orbitEventsEditing, editing => {
+  if (editing) resetOrbitEventDraft()
+  else {
+    previewingId.value = null
+    orbitEventPreview.value = null
+    creatingEventFor.value = null
   }
+})
+
+function triggerLabel(id) {
+  const linked = timelineEvents.value.filter(e => (e.orbit_event_ids ?? []).includes(id))
+  return linked.length ? linked.map(e => e.title).join(', ') : 'Unlinked'
+}
+
+// ── Trigger linking (create/assign a Timeline Event without leaving the map) ──
+// Only offers events that already belong to this planet or aren't linked to
+// any planet yet, matching the Settings form's "one planet per event" scoping.
+const eligibleTimelineEvents = computed(() =>
+  orderedEvents.value.filter(e => !e.planet_slug || e.planet_slug === selectedPlanet.value?.slug)
+)
+
+function triggerSelectValue(id) {
+  return timelineEvents.value.find(e => (e.orbit_event_ids ?? []).includes(id))?.slug ?? ''
+}
+
+async function onTriggerChange(id, event) {
+  const value = event.target.value
+  if (value === '__new__') {
+    creatingEventFor.value = id
+    Object.assign(newLinkedEventDraft, { type: 'instance', title: '', yearStart: '', yearEnd: '' })
+    return
+  }
+  const currentlyLinked = timelineEvents.value.filter(e => (e.orbit_event_ids ?? []).includes(id))
+  await Promise.all(currentlyLinked.map(e =>
+    updateTimelineEvent(e.slug, { orbit_event_ids: e.orbit_event_ids.filter(oid => oid !== id) })
+  ))
+  if (!value) return
+  const target = timelineEvents.value.find(e => e.slug === value)
+  if (!target) return
+  await updateTimelineEvent(value, {
+    orbit_event_ids: [...(target.orbit_event_ids ?? []), id],
+    planet_slug: selectedPlanet.value.slug,
+  })
+}
+
+async function createLinkedEvent(id) {
+  if (newLinkedEventDraft.yearStart === '') return
+  await addTimelineEvent({
+    title: newLinkedEventDraft.title.trim(),
+    description: '',
+    event_type: newLinkedEventDraft.type,
+    year_start: Number(newLinkedEventDraft.yearStart),
+    year_end: newLinkedEventDraft.type === 'range' ? Number(newLinkedEventDraft.yearEnd) : null,
+    book_slug: null,
+    planet_slug: selectedPlanet.value.slug,
+    system_slug: null,
+    orbit_event_ids: [id],
+  })
+  creatingEventFor.value = null
+}
+
+function isPreviewing(id, after) {
+  return previewingId.value === id && orbitEventPreview.value?.showAfter === after
+}
+
+function setPreview(id, showAfter) {
+  const ev = (selectedPlanet.value.orbit_events ?? []).find(e => e.id === id)
+  if (!ev) return
+  previewingId.value = id
+  orbitEventPreview.value = {
+    planetSlug: selectedPlanet.value.slug,
+    orbit: ev.orbit_after != null ? { before: ev.orbit_before, after: ev.orbit_after } : null,
+    color: ev.color_after != null ? { before: ev.color_before, after: ev.color_after } : null,
+    showAfter,
+  }
+}
+
+async function deleteOrbitEvent(id) {
+  const events = (selectedPlanet.value.orbit_events ?? []).filter(e => e.id !== id)
+  await setTimelineEvents(selectedPlanet.value.slug, events)
+  if (previewingId.value === id) {
+    previewingId.value = null
+    orbitEventPreview.value = null
+  }
+  if (creatingEventFor.value === id) creatingEventFor.value = null
+  // Clean up dangling references on any Timeline Events that pointed at this deleted orbit event
+  const referencing = timelineEvents.value.filter(e => (e.orbit_event_ids ?? []).includes(id))
+  await Promise.all(referencing.map(e =>
+    updateTimelineEvent(e.slug, { orbit_event_ids: e.orbit_event_ids.filter(oid => oid !== id) })
+  ))
+}
+
+async function addOrbitEvent() {
+  const entry = { id: crypto.randomUUID() }
+  let hasChange = false
+
+  if (newEventHasOrbit.value) {
+    const after = parseInt(newEventOrbitAfter.value, 10)
+    if (isNaN(after) || after <= 0) return
+    const beforeVal = parseInt(newEventOrbitBefore.value, 10)
+    entry.orbit_before = isNaN(beforeVal) || beforeVal <= 0 ? null : beforeVal
+    entry.orbit_after = after
+    hasChange = true
+  }
+
+  if (newEventHasColor.value) {
+    const after = '#' + newEventColorAfter.value
+    const before = '#' + newEventColorBefore.value
+    if (!/^#[0-9a-f]{6}$/i.test(after) || !/^#[0-9a-f]{6}$/i.test(before)) return
+    entry.color_before = before
+    entry.color_after = after
+    hasChange = true
+  }
+
+  if (!hasChange) return
   const events = [...(selectedPlanet.value.orbit_events ?? []), entry]
   await setTimelineEvents(selectedPlanet.value.slug, events)
-  newEventBook.value = ''
-  newEventOrbitDistance.value = ''
-  newEventColor.value = ''
+  resetOrbitEventDraft()
 }
 
 // ── Keyboard navigation ───────────────────────────────────────────────────────

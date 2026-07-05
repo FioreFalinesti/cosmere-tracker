@@ -34,7 +34,7 @@
         <p class="text-sm text-blue-200 line-clamp-2 mb-3">{{ character.description }}</p>
         <div class="flex flex-wrap gap-1.5 mt-auto">
           <NuxtLink
-            v-for="entry in readBooksFor(character.id)"
+            v-for="entry in booksFor(character.id)"
             :key="entry.book.slug"
             :to="`/books/${entry.book.slug}`"
             class="text-xs bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-blue-100 px-2 py-0.5 rounded transition-colors"
@@ -42,12 +42,6 @@
           >
             {{ entry.book.title }}
           </NuxtLink>
-          <span
-            v-if="unreadBooksFor(character.id) > 0"
-            class="text-xs text-indigo-600 italic px-1"
-          >
-            +{{ unreadBooksFor(character.id) }} unread
-          </span>
         </div>
       </NuxtLink>
     </div>
@@ -62,7 +56,6 @@
 import Fuse from 'fuse.js'
 
 const { characters, books, appearances, load } = useCosmere()
-const { isRead } = useReadBooks()
 await load()
 
 const query = ref('')
@@ -79,19 +72,10 @@ const displayedCharacters = computed(() => {
   return fuse.value.search(query.value).map(r => r.item)
 })
 
-function readBooksFor(characterId) {
+function booksFor(characterId) {
   return appearances.value
     .filter(a => a.characterId === characterId)
     .map(a => ({ book: books.value.find(b => b.slug === a.bookId) }))
-    .filter(x => x.book && isRead(x.book.slug))
-}
-
-function unreadBooksFor(characterId) {
-  return appearances.value
-    .filter(a => a.characterId === characterId)
-    .filter(a => {
-      const book = books.value.find(b => b.slug === a.bookId)
-      return book && !isRead(book.slug)
-    }).length
+    .filter(x => x.book)
 }
 </script>
