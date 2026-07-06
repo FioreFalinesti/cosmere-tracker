@@ -6,7 +6,14 @@
       <!-- Orbit rings — one per member, styled by type -->
       <svg class="orbit-rings" :width="data.size" :height="data.size">
         <defs>
-          <filter v-if="data.starParticulateRing" id="spr-blur" x="-100%" y="-100%" width="300%" height="300%">
+          <filter
+            v-if="data.starParticulateRing"
+            id="spr-blur"
+            x="-100%"
+            y="-100%"
+            width="300%"
+            height="300%"
+          >
             <feGaussianBlur stdDeviation="7" />
           </filter>
         </defs>
@@ -14,7 +21,8 @@
         <!-- Binary: secondary star orbit ring (star itself is a separate animated node) -->
         <circle
           v-if="data.isBinary"
-          :cx="data.size / 2" :cy="data.size / 2"
+          :cx="data.size / 2"
+          :cy="data.size / 2"
           :r="secondaryOrbitR"
           :stroke="data.secondaryStarColor ?? '#ff8844'"
           stroke-opacity="0.28"
@@ -26,8 +34,10 @@
         <!-- Primary star particulate ring — blurred filled rings like the anomaly cloud -->
         <g v-if="starParticulateRings.length" filter="url(#spr-blur)">
           <circle
-            v-for="ring in starParticulateRings" :key="`spr-${ring.r}`"
-            :cx="data.size / 2" :cy="data.size / 2"
+            v-for="ring in starParticulateRings"
+            :key="`spr-${ring.r}`"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
             :r="ring.r"
             fill="none"
             :stroke="data.starColor ?? '#ffcc44'"
@@ -38,14 +48,23 @@
 
         <template v-for="(item, i) in orbitItems" :key="i">
           <!-- Planet orbit: thin white line -->
-          <circle v-if="item.type === 'planet'"
-            :cx="data.size / 2" :cy="data.size / 2" :r="item.r"
-            stroke="white" stroke-opacity="0.18" stroke-width="0.75" fill="none" />
+          <circle
+            v-if="item.type === 'planet'"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
+            :r="item.r"
+            stroke="white"
+            stroke-opacity="0.18"
+            stroke-width="0.75"
+            fill="none"
+          />
           <!-- Asteroid belt: 12 rings with density falloff at edges -->
           <template v-else-if="item.type === 'asteroid_belt'">
             <circle
-              v-for="(ring, ri) in beltRings" :key="ri"
-              :cx="data.size / 2" :cy="data.size / 2"
+              v-for="(ring, ri) in beltRings"
+              :key="ri"
+              :cx="data.size / 2"
+              :cy="data.size / 2"
               :r="item.r + ring.dr"
               :stroke="ring.color"
               :stroke-opacity="ring.opacity"
@@ -57,8 +76,11 @@
           </template>
           <!-- Comet belt: 5 rings, light blue tones, spaced dots -->
           <template v-else-if="item.type === 'comet_belt'">
-            <circle v-for="(ring, ri) in cometRings" :key="ri"
-              :cx="data.size / 2" :cy="data.size / 2"
+            <circle
+              v-for="(ring, ri) in cometRings"
+              :key="ri"
+              :cx="data.size / 2"
+              :cy="data.size / 2"
               :r="item.r + ring.dr"
               :stroke="ring.color"
               :stroke-opacity="ring.opacity"
@@ -69,137 +91,202 @@
             />
           </template>
           <!-- Star: dashed orbit ring in star color -->
-          <circle v-else-if="item.type === 'star'"
-            :cx="data.size / 2" :cy="data.size / 2" :r="item.r"
+          <circle
+            v-else-if="item.type === 'star'"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
+            :r="item.r"
             :stroke="data.secondaryStarColor ?? '#ff8844'"
-            stroke-opacity="0.28" stroke-width="0.75" stroke-dasharray="4 4" fill="none" />
+            stroke-opacity="0.28"
+            stroke-width="0.75"
+            stroke-dasharray="4 4"
+            fill="none"
+          />
           <!-- Anomaly: faint orbit ring -->
-          <circle v-else-if="item.type === 'anomaly'"
-            :cx="data.size / 2" :cy="data.size / 2" :r="item.r"
-            stroke="#cc99ff" stroke-opacity="0.15" stroke-width="0.75" fill="none" />
+          <circle
+            v-else-if="item.type === 'anomaly'"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
+            :r="item.r"
+            stroke="#cc99ff"
+            stroke-opacity="0.15"
+            stroke-width="0.75"
+            fill="none"
+          />
         </template>
       </svg>
 
       <div class="system-sun" :style="sunStyle" />
+
+      <!-- Shard location badges — clustered directly over the star -->
+      <div
+        v-for="badge in shardBadges"
+        :key="badge.slug"
+        class="shard-badge"
+        :style="{ left: `${badge.x}px`, top: `${badge.y}px` }"
+      >
+        <RemnantBlob v-if="badge.kind === 'remnant'" :size="28" :color="badge.color" />
+        <svg v-else :viewBox="SHARD_ICON_VIEWBOX" class="shard-badge-icon">
+          <path :d="SHARD_BG_PATH" :fill="badge.color" :stroke="badge.color" stroke-width="1" />
+          <g transform="translate(0,152) scale(0.1,-0.1)" :fill="darkenHex(badge.color)">
+            <path :d="SHARD_ICON_PATH" />
+          </g>
+        </svg>
+        <span class="shard-badge-label" :style="{ color: badgeLabelColor }">{{ badge.name }}</span>
+      </div>
     </div>
     <p class="system-label" :style="{ color: `${data.color}aa` }">{{ data.name }}</p>
-    <p v-if="data.starName" class="star-label" :style="{ color: `${data.color}66` }">{{ data.starName }}</p>
+    <p v-if="data.starName" class="star-label" :style="{ color: `${data.color}66` }">
+      {{ data.starName }}
+    </p>
   </div>
 </template>
 
 <script setup>
+import { darkenHex, contrastGrey } from "~/utils/colorUtils";
+import { SHARD_ICON_VIEWBOX, SHARD_BG_PATH, SHARD_ICON_PATH } from "~/utils/shardIcon";
+
 const props = defineProps({
   data: { type: Object, required: true },
   selected: { type: Boolean, default: false },
-})
+});
 
-const sunSize = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64))
+const sunSize = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64));
 
-const orbitInnerR = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64) / 2 + 20)
+const orbitInnerR = computed(
+  () => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64) / 2 + 20,
+);
 
 const starParticulateRings = computed(() => {
-  if (!props.data.starParticulateRing) return []
-  const sr = sunSize.value / 2
-  const r = sr * 2.0
+  if (!props.data.starParticulateRing) return [];
+  const sr = sunSize.value / 2;
+  const r = sr * 2.0;
   return [
     { r: r * 0.92, opacity: 0.18, width: 14 },
-    { r,           opacity: 0.30, width: 22 },
+    { r, opacity: 0.3, width: 22 },
     { r: r * 1.08, opacity: 0.18, width: 14 },
-  ]
-})
+  ];
+});
 
 const autoOuterR = computed(() => {
-  const n = (props.data.memberTypes ?? []).length
-  return orbitInnerR.value + Math.max(80, n * 55)
-})
+  const n = (props.data.memberTypes ?? []).length;
+  return orbitInnerR.value + Math.max(80, n * 55);
+});
 
 const secondaryOrbitR = computed(() =>
-  props.data.isBinary ? (props.data.secondaryStarOrbitDist ?? 0) : 0
-)
+  props.data.isBinary ? (props.data.secondaryStarOrbitDist ?? 0) : 0,
+);
 
 // 5 rings for comet belt — light blues, r-10 to r+10, widely spaced dots
 const cometRings = [
-  { dr: -50, color: '#60b8f0', opacity: 0.18, width: 4,   dash: '3 30' },
-  { dr: -25, color: '#80ccff', opacity: 0.28, width: 6,   dash: '4 26' },
-  { dr:   0, color: '#a0ddff', opacity: 0.38, width: 8,   dash: '5 22' },
-  { dr:  25, color: '#80ccff', opacity: 0.28, width: 6,   dash: '4 26' },
-  { dr:  50, color: '#60b8f0', opacity: 0.18, width: 4,   dash: '3 30' },
-]
+  { dr: -50, color: "#60b8f0", opacity: 0.18, width: 4, dash: "3 30" },
+  { dr: -25, color: "#80ccff", opacity: 0.28, width: 6, dash: "4 26" },
+  { dr: 0, color: "#a0ddff", opacity: 0.38, width: 8, dash: "5 22" },
+  { dr: 25, color: "#80ccff", opacity: 0.28, width: 6, dash: "4 26" },
+  { dr: 50, color: "#60b8f0", opacity: 0.18, width: 4, dash: "3 30" },
+];
 
 // 12 concentric rings spanning r-25 to r+25 with varied dark brown/grey tones
 const beltRings = [
-  { dr: -50, color: '#2a2418', opacity: 0.08, width: 1,   dash: '1 16' },
-  { dr: -44, color: '#352c20', opacity: 0.13, width: 1.5, dash: '1 13' },
-  { dr: -38, color: '#4a3828', opacity: 0.20, width: 2,   dash: '1 11' },
-  { dr: -32, color: '#3d3535', opacity: 0.26, width: 2.5, dash: '1 8'  },
-  { dr: -26, color: '#5a4230', opacity: 0.31, width: 3,   dash: '1 7'  },
-  { dr: -20, color: '#4a4040', opacity: 0.35, width: 3.5, dash: '2 6'  },
-  { dr: -14, color: '#5e4838', opacity: 0.39, width: 3.5, dash: '1 5'  },
-  { dr:  -8, color: '#664535', opacity: 0.42, width: 4,   dash: '2 4'  },
-  { dr:  -3, color: '#5a4838', opacity: 0.44, width: 4.5, dash: '1 3'  },
-  { dr:   2, color: '#6b5030', opacity: 0.45, width: 5,   dash: '2 3'  },
-  { dr:   7, color: '#5a4838', opacity: 0.44, width: 4.5, dash: '1 3'  },
-  { dr:  12, color: '#664040', opacity: 0.42, width: 4,   dash: '2 4'  },
-  { dr:  18, color: '#504540', opacity: 0.38, width: 3.5, dash: '1 5'  },
-  { dr:  24, color: '#4a4030', opacity: 0.33, width: 3,   dash: '2 6'  },
-  { dr:  30, color: '#3e3028', opacity: 0.28, width: 2.5, dash: '1 7'  },
-  { dr:  36, color: '#484035', opacity: 0.22, width: 2,   dash: '1 9'  },
-  { dr:  42, color: '#352e25', opacity: 0.15, width: 1.5, dash: '1 12' },
-  { dr:  46, color: '#302820', opacity: 0.11, width: 1,   dash: '1 14' },
-  { dr:  49, color: '#2a2418', opacity: 0.07, width: 1,   dash: '1 16' },
-  { dr:  50, color: '#201c14', opacity: 0.05, width: 1,   dash: '1 18' },
-]
+  { dr: -50, color: "#2a2418", opacity: 0.08, width: 1, dash: "1 16" },
+  { dr: -44, color: "#352c20", opacity: 0.13, width: 1.5, dash: "1 13" },
+  { dr: -38, color: "#4a3828", opacity: 0.2, width: 2, dash: "1 11" },
+  { dr: -32, color: "#3d3535", opacity: 0.26, width: 2.5, dash: "1 8" },
+  { dr: -26, color: "#5a4230", opacity: 0.31, width: 3, dash: "1 7" },
+  { dr: -20, color: "#4a4040", opacity: 0.35, width: 3.5, dash: "2 6" },
+  { dr: -14, color: "#5e4838", opacity: 0.39, width: 3.5, dash: "1 5" },
+  { dr: -8, color: "#664535", opacity: 0.42, width: 4, dash: "2 4" },
+  { dr: -3, color: "#5a4838", opacity: 0.44, width: 4.5, dash: "1 3" },
+  { dr: 2, color: "#6b5030", opacity: 0.45, width: 5, dash: "2 3" },
+  { dr: 7, color: "#5a4838", opacity: 0.44, width: 4.5, dash: "1 3" },
+  { dr: 12, color: "#664040", opacity: 0.42, width: 4, dash: "2 4" },
+  { dr: 18, color: "#504540", opacity: 0.38, width: 3.5, dash: "1 5" },
+  { dr: 24, color: "#4a4030", opacity: 0.33, width: 3, dash: "2 6" },
+  { dr: 30, color: "#3e3028", opacity: 0.28, width: 2.5, dash: "1 7" },
+  { dr: 36, color: "#484035", opacity: 0.22, width: 2, dash: "1 9" },
+  { dr: 42, color: "#352e25", opacity: 0.15, width: 1.5, dash: "1 12" },
+  { dr: 46, color: "#302820", opacity: 0.11, width: 1, dash: "1 14" },
+  { dr: 49, color: "#2a2418", opacity: 0.07, width: 1, dash: "1 16" },
+  { dr: 50, color: "#201c14", opacity: 0.05, width: 1, dash: "1 18" },
+];
 
 // Build one orbit entry per member (planet or body), evenly spaced
 const orbitItems = computed(() => {
-  const types = props.data.memberTypes ?? Array(props.data.planetCount ?? 0).fill('planet')
-  const lagrangePoints = props.data.memberLagrangePoints ?? []
-  const distances = props.data.memberOrbitDistances
-  const n = types.length
-  if (n === 0) return []
-  const innerR = orbitInnerR.value
-  const outerR = autoOuterR.value
-  return types.map((type, i) => {
-    if (lagrangePoints[i]) return null
-    return {
-      type,
-      r: distances
-        ? distances[i]
-        : innerR + (outerR - innerR) * (i + 1) / (n + 1),
-    }
-  }).filter(Boolean)
-})
+  const types = props.data.memberTypes ?? Array(props.data.planetCount ?? 0).fill("planet");
+  const lagrangePoints = props.data.memberLagrangePoints ?? [];
+  const distances = props.data.memberOrbitDistances;
+  const n = types.length;
+  if (n === 0) return [];
+  const innerR = orbitInnerR.value;
+  const outerR = autoOuterR.value;
+  return types
+    .map((type, i) => {
+      if (lagrangePoints[i]) return null;
+      return {
+        type,
+        r: distances ? distances[i] : innerR + ((outerR - innerR) * (i + 1)) / (n + 1),
+      };
+    })
+    .filter(Boolean);
+});
 
 const circleStyle = computed(() => ({
-  width: '100%',
-  height: '100%',
+  width: "100%",
+  height: "100%",
   background: `radial-gradient(circle, #07091a 0%, #020308 100%)`,
   border: `2px solid ${props.data.color}55`,
   boxShadow: [
     `0 0 ${props.data.size * 0.35}px ${props.data.size * 0.06}px ${props.data.color}33`,
     `0 0 ${props.data.size * 0.12}px ${props.data.color}66`,
     `inset 0 0 ${props.data.size * 0.25}px ${props.data.color}0d`,
-  ].join(', '),
-}))
+  ].join(", "),
+}));
 
 function blendToWhite(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const m = n => Math.round(n + (255 - n) * amount).toString(16).padStart(2, '0')
-  return `#${m(r)}${m(g)}${m(b)}`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const m = (n) =>
+    Math.round(n + (255 - n) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${m(r)}${m(g)}${m(b)}`;
 }
 
+// Shards without a specific planet are "in the system generally" — cluster
+// their badges directly over the star rather than ringing the whole system,
+// so it reads as "sitting at the star" and not "orbiting way out at the edge".
+// Badges cluster over the star, so pick a grey that reads against its color.
+const badgeLabelColor = computed(() => contrastGrey(props.data.starColor ?? "#ffcc44"));
+
+const shardBadges = computed(() => {
+  const shards = props.data.shardsHere ?? [];
+  const n = shards.length;
+  if (n === 0) return [];
+  const center = props.data.size / 2;
+  // Radius grows with badge count too, not just the star's size — otherwise
+  // a heavily-populated star crams every badge into the same tiny ring.
+  const clusterRadius = n > 1 ? Math.max(10, (sunSize.value / 2) * 0.6, n * 3) : 0;
+  return shards.map((shard, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return {
+      ...shard,
+      x: center + clusterRadius * Math.cos(angle),
+      y: center + clusterRadius * Math.sin(angle),
+    };
+  });
+});
+
 const sunStyle = computed(() => {
-  const c = props.data.starColor ?? '#ffcc44'
-  const mid = blendToWhite(c, 0.7)
+  const c = props.data.starColor ?? "#ffcc44";
+  const mid = blendToWhite(c, 0.7);
   return {
     width: `${sunSize.value}px`,
     height: `${sunSize.value}px`,
     background: `radial-gradient(circle, #ffffff 0%, ${mid} 50%, ${c} 100%)`,
     boxShadow: `0 0 ${sunSize.value * 1.5}px ${sunSize.value * 0.5}px ${c}66, 0 0 ${sunSize.value * 3}px ${sunSize.value}px ${c}22`,
-  }
-})
+  };
+});
 </script>
 
 <style scoped>
@@ -235,6 +322,29 @@ const sunStyle = computed(() => {
   left: 50%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
+}
+
+.shard-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.shard-badge-icon {
+  height: 16px;
+  width: auto;
+  display: block;
+}
+
+.shard-badge-label {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .system-label {

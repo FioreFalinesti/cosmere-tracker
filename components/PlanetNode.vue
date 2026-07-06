@@ -1,13 +1,12 @@
 <template>
   <div class="planet-node" @click="handleClick">
     <div class="planet-wrap" :style="{ width: `${data.size}px`, height: `${data.size}px` }">
-
       <!-- Saturn rings — back half (rendered before planet so orb covers the middle) -->
       <svg
         v-if="rings.length"
         :width="data.size"
         :height="data.size"
-        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none"
       >
         <path
           v-for="(ring, i) in rings"
@@ -36,9 +35,15 @@
           <clipPath :id="`gc-${pathId}`">
             <circle :cx="data.size / 2" :cy="data.size / 2" :r="data.size / 2" />
           </clipPath>
-          <radialGradient :id="`gl-${pathId}`" cx="35%" cy="35%" r="70%" gradientUnits="objectBoundingBox">
-            <stop offset="0%"   stop-color="white" stop-opacity="0.40" />
-            <stop offset="40%"  stop-color="white" stop-opacity="0" />
+          <radialGradient
+            :id="`gl-${pathId}`"
+            cx="35%"
+            cy="35%"
+            r="70%"
+            gradientUnits="objectBoundingBox"
+          >
+            <stop offset="0%" stop-color="white" stop-opacity="0.40" />
+            <stop offset="40%" stop-color="white" stop-opacity="0" />
             <stop offset="100%" stop-color="black" stop-opacity="0.42" />
           </radialGradient>
         </defs>
@@ -48,8 +53,10 @@
             <path v-for="(band, i) in gasGiant.bands" :key="i" :d="band.d" :fill="band.color" />
           </g>
           <ellipse
-            :cx="data.size / 2" :cy="data.size / 2"
-            :rx="data.size / 2" :ry="data.size / 2"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
+            :rx="data.size / 2"
+            :ry="data.size / 2"
             :fill="`url(#gl-${pathId})`"
           />
         </g>
@@ -70,9 +77,15 @@
           <clipPath :id="`dc-${pathId}`">
             <circle :cx="data.size / 2" :cy="data.size / 2" :r="data.size / 2" />
           </clipPath>
-          <radialGradient :id="`dl-${pathId}`" cx="35%" cy="35%" r="70%" gradientUnits="objectBoundingBox">
-            <stop offset="0%"   stop-color="white" stop-opacity="0.30" />
-            <stop offset="40%"  stop-color="white" stop-opacity="0" />
+          <radialGradient
+            :id="`dl-${pathId}`"
+            cx="35%"
+            cy="35%"
+            r="70%"
+            gradientUnits="objectBoundingBox"
+          >
+            <stop offset="0%" stop-color="white" stop-opacity="0.30" />
+            <stop offset="40%" stop-color="white" stop-opacity="0" />
             <stop offset="100%" stop-color="black" stop-opacity="0.55" />
           </radialGradient>
         </defs>
@@ -81,19 +94,27 @@
           <ellipse
             v-for="(p, i) in dwarfPlanet.patches"
             :key="`p-${i}`"
-            :cx="p.x" :cy="p.y" :rx="p.rx" :ry="p.ry"
-            :fill="p.color" :opacity="p.opacity"
+            :cx="p.x"
+            :cy="p.y"
+            :rx="p.rx"
+            :ry="p.ry"
+            :fill="p.color"
+            :opacity="p.opacity"
             :transform="`rotate(${p.rot}, ${p.x}, ${p.y})`"
           />
           <circle
             v-for="(c, i) in dwarfPlanet.craters"
             :key="`c-${i}`"
-            :cx="c.x" :cy="c.y" :r="c.r"
+            :cx="c.x"
+            :cy="c.y"
+            :r="c.r"
             :fill="c.color"
           />
           <ellipse
-            :cx="data.size / 2" :cy="data.size / 2"
-            :rx="data.size / 2" :ry="data.size / 2"
+            :cx="data.size / 2"
+            :cy="data.size / 2"
+            :rx="data.size / 2"
+            :ry="data.size / 2"
             :fill="`url(#dl-${pathId})`"
           />
         </g>
@@ -116,33 +137,60 @@
         v-if="showName && data.moonOrbits?.length"
         :width="data.size"
         :height="data.size"
-        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none"
       >
         <template v-for="(moon, mi) in data.moonOrbits" :key="mi">
-          <line v-if="moon.orbitType === 'polar'"
-            :x1="cx + moon.orbitR * polarLineDir.cos" :y1="cy + moon.orbitR * polarLineDir.sin"
-            :x2="cx - moon.orbitR * polarLineDir.cos" :y2="cy - moon.orbitR * polarLineDir.sin"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75" />
-          <ellipse v-else-if="moon.orbitType === 'eccentric-a'"
-            :cx="cx" :cy="cy" :rx="moon.orbitR" :ry="moon.orbitR * 0.45"
-            :transform="`rotate(${(moon.orbitRotation * 180 / Math.PI).toFixed(1)}, ${cx}, ${cy})`"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
-          <circle v-else-if="moon.orbitType === 'eccentric-c'"
+          <line
+            v-if="moon.orbitType === 'polar'"
+            :x1="cx + moon.orbitR * polarLineDir.cos"
+            :y1="cy + moon.orbitR * polarLineDir.sin"
+            :x2="cx - moon.orbitR * polarLineDir.cos"
+            :y2="cy - moon.orbitR * polarLineDir.sin"
+            stroke="white"
+            stroke-opacity="0.03"
+            stroke-width="0.75"
+          />
+          <ellipse
+            v-else-if="moon.orbitType === 'eccentric-a'"
+            :cx="cx"
+            :cy="cy"
+            :rx="moon.orbitR"
+            :ry="moon.orbitR * 0.45"
+            :transform="`rotate(${((moon.orbitRotation * 180) / Math.PI).toFixed(1)}, ${cx}, ${cy})`"
+            stroke="white"
+            stroke-opacity="0.03"
+            stroke-width="0.75"
+            fill="none"
+          />
+          <circle
+            v-else-if="moon.orbitType === 'eccentric-c'"
             :cx="cx + moon.orbitR * 0.4 * Math.cos(moon.orbitRotation)"
             :cy="cy + moon.orbitR * 0.4 * Math.sin(moon.orbitRotation)"
             :r="moon.orbitR"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
-          <circle v-else
-            :cx="cx" :cy="cy" :r="moon.orbitR"
-            stroke="white" stroke-opacity="0.03" stroke-width="0.75" fill="none" />
+            stroke="white"
+            stroke-opacity="0.03"
+            stroke-width="0.75"
+            fill="none"
+          />
+          <circle
+            v-else
+            :cx="cx"
+            :cy="cy"
+            :r="moon.orbitR"
+            stroke="white"
+            stroke-opacity="0.03"
+            stroke-width="0.75"
+            fill="none"
+          />
         </template>
       </svg>
 
       <!-- Name curved along the top — only shown when viewing this system -->
-      <svg v-if="showName"
+      <svg
+        v-if="showName"
         :width="data.size"
         :height="data.size"
-        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none"
       >
         <defs>
           <path :id="pathId" :d="textArcPath" />
@@ -157,7 +205,7 @@
         v-if="rings.length"
         :width="data.size"
         :height="data.size"
-        style="position: absolute; inset: 0; overflow: visible; pointer-events: none;"
+        style="position: absolute; inset: 0; overflow: visible; pointer-events: none"
       >
         <path
           v-for="(ring, i) in rings"
@@ -171,197 +219,256 @@
         />
       </svg>
 
+      <!-- Shard location badges — clustered directly over the planet -->
+      <div
+        v-for="badge in shardBadges"
+        :key="badge.slug"
+        class="shard-badge"
+        :style="{ left: `${badge.x}px`, top: `${badge.y}px` }"
+      >
+        <RemnantBlob v-if="badge.kind === 'remnant'" :size="28" :color="badge.color" />
+        <svg v-else :viewBox="SHARD_ICON_VIEWBOX" class="shard-badge-icon">
+          <path :d="SHARD_BG_PATH" :fill="badge.color" :stroke="badge.color" stroke-width="1" />
+          <g transform="translate(0,152) scale(0.1,-0.1)" :fill="darkenHex(badge.color)">
+            <path :d="SHARD_ICON_PATH" />
+          </g>
+        </svg>
+        <span class="shard-badge-label" :style="{ color: labelColor(badge) }">
+          {{ badge.name }}
+        </span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { darkenHex, contrastGrey } from "~/utils/colorUtils";
+import { SHARD_ICON_VIEWBOX, SHARD_BG_PATH, SHARD_ICON_PATH } from "~/utils/shardIcon";
+
 const props = defineProps({
   id: { type: String, required: true },
   data: { type: Object, required: true },
   selected: { type: Boolean, default: false },
-})
+});
 
-const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, polarOrbitAngles } = useMapState()
+const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, polarOrbitAngles } =
+  useMapState();
 
 const polarLineDir = computed(() => {
-  const a = polarOrbitAngles[props.id] ?? (-Math.PI / 2)
-  return { cos: Math.cos(a), sin: Math.sin(a) }
-})
+  const a = polarOrbitAngles[props.id] ?? -Math.PI / 2;
+  return { cos: Math.cos(a), sin: Math.sin(a) };
+});
 
 function handleClick() {
-  selectedPlanetSlug.value = props.id
-  selectedSystemSlug.value = null
-  zoomTarget.value = { type: 'planet', slug: props.id }
+  selectedPlanetSlug.value = props.id;
+  selectedSystemSlug.value = null;
+  zoomTarget.value = { type: "planet", slug: props.id };
 }
 
-const showName = computed(() => viewingSystem.value === props.data.systemSlug)
+const showName = computed(() => viewingSystem.value === props.data.systemSlug);
 
+const pathId = computed(() => `tp-${props.data.name.replace(/\s+/g, "-").toLowerCase()}`);
 
-const pathId = computed(() => `tp-${props.data.name.replace(/\s+/g, '-').toLowerCase()}`)
+const cx = computed(() => props.data.size / 2);
+const cy = computed(() => props.data.size / 2);
 
-const cx = computed(() => props.data.size / 2)
-const cy = computed(() => props.data.size / 2)
+// Cluster Shard badges directly over the planet's disc, scaled to its size.
+const shardBadges = computed(() => {
+  const shards = props.data.shardsHere ?? [];
+  const n = shards.length;
+  if (n === 0) return [];
+  const center = props.data.size / 2;
+  // Radius grows with badge count too, not just planet size — otherwise a
+  // heavily-populated body (e.g. all 16 Shards on Yolen right after the
+  // Shattering) crams every badge into the same tiny ring and they overlap.
+  const clusterRadius = n > 1 ? Math.max(8, center * 0.5, n * 2.3) : 0;
+  return shards.map((shard, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return {
+      ...shard,
+      x: center + clusterRadius * Math.cos(angle),
+      y: center + clusterRadius * Math.sin(angle),
+    };
+  });
+});
 
 const textArcPath = computed(() => {
-  const r = props.data.size / 2 + 1
-  return `M ${cx.value - r} ${cy.value} A ${r} ${r} 0 0 1 ${cx.value + r} ${cy.value}`
-})
+  const r = props.data.size / 2 + 1;
+  return `M ${cx.value - r} ${cy.value} A ${r} ${r} 0 0 1 ${cx.value + r} ${cy.value}`;
+});
 
 const fontSize = computed(() => {
-  const r = props.data.size / 2 + 1
-  const available = Math.PI * r
-  const needed = props.data.name.length * 0.6 * 8
-  if (needed <= available) return 8
-  return Math.max(4, Math.floor(available / (props.data.name.length * 0.6)))
-})
+  const r = props.data.size / 2 + 1;
+  const available = Math.PI * r;
+  const needed = props.data.name.length * 0.6 * 8;
+  if (needed <= available) return 8;
+  return Math.max(4, Math.floor(available / (props.data.name.length * 0.6)));
+});
 
 // ── Planet orb color ─────────────────────────────────────────────────────────
 
 function desaturateHex(hex, amount = 0.65) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b)
-  const h = n => Math.round(n + (gray - n) * amount).toString(16).padStart(2, '0')
-  return `#${h(r)}${h(g)}${h(b)}`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+  const h = (n) =>
+    Math.round(n + (gray - n) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
 }
 
 const orbColor = computed(() =>
-  props.data.uninhabited ? desaturateHex(props.data.color) : props.data.color
-)
+  props.data.uninhabited ? desaturateHex(props.data.color) : props.data.color,
+);
 const orbColorDark = computed(() =>
-  props.data.uninhabited ? desaturateHex(props.data.colorDark) : props.data.colorDark
-)
+  props.data.uninhabited ? desaturateHex(props.data.colorDark) : props.data.colorDark,
+);
+
+// Badges cluster over the planet, so pick a grey that reads against its color.
+// The label sits directly over the badge icon, so contrast against whatever
+// that icon actually renders behind it — the darker detail layer for a
+// Shard's crystal icon, or the blob's own color for a splinter-remnant.
+function labelColor(badge) {
+  return contrastGrey(badge.kind === "remnant" ? badge.color : darkenHex(badge.color));
+}
 
 // ── Saturn rings ──────────────────────────────────────────────────────────────
 
-const RING_COLORS = ['#ffffff', '#cccccc', '#e8e8e8', '#bbbbbb', '#d4d4d4']
+const RING_COLORS = ["#ffffff", "#cccccc", "#e8e8e8", "#bbbbbb", "#d4d4d4"];
 
 const rings = computed(() => {
-  const orbits = props.data.ringOrbits ?? []
-  if (!orbits.length) return []
+  const orbits = props.data.ringOrbits ?? [];
+  if (!orbits.length) return [];
   return orbits.map((orb, i) => ({
     rx: orb.orbitR,
     ry: orb.orbitR * 0.28,
     sw: orb.thickness ?? Math.max(2, props.data.size * 0.05),
     color: RING_COLORS[i % RING_COLORS.length],
     tilt: orb.tilt ?? 0,
-  }))
-})
+  }));
+});
 
 // ── Gas giant bands ───────────────────────────────────────────────────────────
 
 function adjustHex(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const h = n => Math.min(255, Math.max(0, amount > 0
-    ? Math.round(n + (255 - n) * amount)
-    : Math.round(n * (1 + amount))
-  )).toString(16).padStart(2, '0')
-  return `#${h(r)}${h(g)}${h(b)}`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const h = (n) =>
+    Math.min(
+      255,
+      Math.max(0, amount > 0 ? Math.round(n + (255 - n) * amount) : Math.round(n * (1 + amount))),
+    )
+      .toString(16)
+      .padStart(2, "0");
+  return `#${h(r)}${h(g)}${h(b)}`;
 }
 
 const gasGiant = computed(() => {
-  if (!props.data.isGasGiant) return { angle: 0, bands: [] }
-  const s = props.data.size
-  const color = props.data.color
-  const idx = props.data.memberIndex ?? 0
-  const sm = props.data.sizeMultiplier ?? 1
+  if (!props.data.isGasGiant) return { angle: 0, bands: [] };
+  const s = props.data.size;
+  const color = props.data.color;
+  const idx = props.data.memberIndex ?? 0;
+  const sm = props.data.sizeMultiplier ?? 1;
 
   // Derive per-planet angle and thickness from index + size_multiplier
-  const t1 = (idx * 13 + Math.round(sm * 7)) % 20   // 0–19
-  const t2 = (idx * 7  + Math.round(sm * 11)) % 17  // 0–16
-  const angle = -(10 + t1 * 1.3)                     // –10° to –35°
-  const bandH = s * (0.03 + (t2 / 16) * 0.045)       // 3%–7.5% of diameter
+  const t1 = (idx * 13 + Math.round(sm * 7)) % 20; // 0–19
+  const t2 = (idx * 7 + Math.round(sm * 11)) % 17; // 0–16
+  const angle = -(10 + t1 * 1.3); // –10° to –35°
+  const bandH = s * (0.03 + (t2 / 16) * 0.045); // 3%–7.5% of diameter
 
-  const amp    = bandH * 0.35
-  const xStart = -s * 0.6
-  const xEnd   = s * 1.6
-  const w      = xEnd - xStart
-  const numBands = Math.ceil((s + bandH * 2) / bandH)
+  const amp = bandH * 0.35;
+  const xStart = -s * 0.6;
+  const xEnd = s * 1.6;
+  const w = xEnd - xStart;
+  const numBands = Math.ceil((s + bandH * 2) / bandH);
 
   const bands = Array.from({ length: numBands }, (_, i) => {
-    const y   = -bandH + i * bandH
-    const dir = i % 2 === 0 ? 1 : -1
-    const lf  = Math.sin(i * 1.1 + 0.5) * 0.07 + Math.sin(i * 0.4) * 0.03
-    const d   = [
+    const y = -bandH + i * bandH;
+    const dir = i % 2 === 0 ? 1 : -1;
+    const lf = Math.sin(i * 1.1 + 0.5) * 0.07 + Math.sin(i * 0.4) * 0.03;
+    const d = [
       `M ${xStart} ${y}`,
       `C ${xStart + w * 0.3} ${y - dir * amp} ${xStart + w * 0.7} ${y + dir * amp} ${xEnd} ${y}`,
       `L ${xEnd} ${y + bandH}`,
       `C ${xStart + w * 0.7} ${y + bandH + dir * amp} ${xStart + w * 0.3} ${y + bandH - dir * amp} ${xStart} ${y + bandH}`,
-      'Z',
-    ].join(' ')
-    return { d, color: adjustHex(color, lf) }
-  })
+      "Z",
+    ].join(" ");
+    return { d, color: adjustHex(color, lf) };
+  });
 
-  return { angle, bands }
-})
+  return { angle, bands };
+});
 
 // ── Dwarf planet rocky/icy texture ────────────────────────────────────────────
 
 // Blend a hex color toward a cold blue target by `amount` (0–1)
-const COLD_BLUE = { r: 110, g: 160, b: 220 }
+const COLD_BLUE = { r: 110, g: 160, b: 220 };
 function blendToBlue(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const h = (n, target) => Math.round(n + (target - n) * amount).toString(16).padStart(2, '0')
-  return `#${h(r, COLD_BLUE.r)}${h(g, COLD_BLUE.g)}${h(b, COLD_BLUE.b)}`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const h = (n, target) =>
+    Math.round(n + (target - n) * amount)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${h(r, COLD_BLUE.r)}${h(g, COLD_BLUE.g)}${h(b, COLD_BLUE.b)}`;
 }
 
 const dwarfPlanet = computed(() => {
-  if (!props.data.isDwarfPlanet) return { patches: [], craters: [], baseColor: '#888', adjustedColor: '#888' }
-  const s = props.data.size
-  const idx   = props.data.memberIndex ?? 0
-  const count = props.data.memberCount ?? 1
-  const sm    = props.data.sizeMultiplier ?? 1
-  const seed  = idx * 31 + Math.round(sm * 17)
+  if (!props.data.isDwarfPlanet)
+    return { patches: [], craters: [], baseColor: "#888", adjustedColor: "#888" };
+  const s = props.data.size;
+  const idx = props.data.memberIndex ?? 0;
+  const count = props.data.memberCount ?? 1;
+  const sm = props.data.sizeMultiplier ?? 1;
+  const seed = idx * 31 + Math.round(sm * 17);
 
   // Normalized orbital distance (0 = innermost, 1 = outermost)
-  const t = count > 1 ? idx / (count - 1) : 0
+  const t = count > 1 ? idx / (count - 1) : 0;
 
   // Shift color toward cold blue based on distance from star
-  const color = blendToBlue(props.data.color, t * 0.45)
+  const color = blendToBlue(props.data.color, t * 0.45);
 
   function sr(n) {
-    return ((seed * 1664525 + n * 22695477 + 1013904223) % 10000) / 10000
+    return ((seed * 1664525 + n * 22695477 + 1013904223) % 10000) / 10000;
   }
 
-  const r  = s / 2
-  const cx = s / 2
-  const cy = s / 2
+  const r = s / 2;
+  const cx = s / 2;
+  const cy = s / 2;
 
   // Slightly lightened base for icy appearance
-  const baseColor = adjustHex(color, 0.10)
+  const baseColor = adjustHex(color, 0.1);
 
   // Irregular icy/rocky patches: 2-in-3 icy (lighter), 1-in-3 rocky (darker)
   const patches = Array.from({ length: 8 }, (_, i) => {
-    const angle   = sr(i * 5)     * Math.PI * 2
-    const dist    = sr(i * 5 + 1) * r * 0.75
-    const x       = cx + dist * Math.cos(angle)
-    const y       = cy + dist * Math.sin(angle)
-    const rx      = r * (0.14 + sr(i * 5 + 2) * 0.28)
-    const ry      = r * (0.08 + sr(i * 5 + 3) * 0.18)
-    const rot     = sr(i * 5 + 4) * 180
-    const lf      = i % 3 !== 2 ? (0.18 + sr(i) * 0.22) : -(0.12 + sr(i) * 0.18)
-    const opacity = 0.55 + sr(i * 3 + 20) * 0.35
-    return { x, y, rx, ry, rot, color: adjustHex(color, lf), opacity }
-  })
+    const angle = sr(i * 5) * Math.PI * 2;
+    const dist = sr(i * 5 + 1) * r * 0.75;
+    const x = cx + dist * Math.cos(angle);
+    const y = cy + dist * Math.sin(angle);
+    const rx = r * (0.14 + sr(i * 5 + 2) * 0.28);
+    const ry = r * (0.08 + sr(i * 5 + 3) * 0.18);
+    const rot = sr(i * 5 + 4) * 180;
+    const lf = i % 3 !== 2 ? 0.18 + sr(i) * 0.22 : -(0.12 + sr(i) * 0.18);
+    const opacity = 0.55 + sr(i * 3 + 20) * 0.35;
+    return { x, y, rx, ry, rot, color: adjustHex(color, lf), opacity };
+  });
 
   // Small craters: dark filled circles
   const craters = Array.from({ length: 5 }, (_, i) => {
-    const angle = sr(i * 4 + 100) * Math.PI * 2
-    const dist  = sr(i * 4 + 101) * r * 0.82
-    const x     = cx + dist * Math.cos(angle)
-    const y     = cy + dist * Math.sin(angle)
-    const cr    = r * (0.03 + sr(i * 4 + 102) * 0.07)
-    return { x, y, r: cr, color: adjustHex(color, -(0.32 + sr(i * 4 + 103) * 0.20)) }
-  })
+    const angle = sr(i * 4 + 100) * Math.PI * 2;
+    const dist = sr(i * 4 + 101) * r * 0.82;
+    const x = cx + dist * Math.cos(angle);
+    const y = cy + dist * Math.sin(angle);
+    const cr = r * (0.03 + sr(i * 4 + 102) * 0.07);
+    return { x, y, r: cr, color: adjustHex(color, -(0.32 + sr(i * 4 + 103) * 0.2)) };
+  });
 
-  return { patches, craters, baseColor, adjustedColor: color }
-})
+  return { patches, craters, baseColor, adjustedColor: color };
+});
 </script>
 
 <style scoped>
@@ -380,5 +487,28 @@ const dwarfPlanet = computed(() => {
   position: absolute;
   inset: 0;
   transition: box-shadow 0.2s ease;
+}
+
+.shard-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.shard-badge-icon {
+  height: 16px;
+  width: auto;
+  display: block;
+}
+
+.shard-badge-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 </style>

@@ -6,7 +6,10 @@
 
     <div class="mb-8">
       <div class="flex items-center gap-3 mb-2 flex-wrap">
-        <h1 class="text-3xl font-bold text-blue-50">{{ character.name }}</h1>
+        <h1
+          class="text-3xl font-bold"
+          :class="character.name === 'unknown' ? 'text-indigo-500 italic font-normal' : 'text-blue-50'"
+        >{{ character.name }}</h1>
         <span v-if="character.isPoV" class="text-sm text-gold-400 font-medium">PoV Character</span>
       </div>
       <p class="text-indigo-400 text-sm mb-4">{{ character.world }}</p>
@@ -40,13 +43,21 @@
 <script setup>
 const route = useRoute()
 const { characters, books, appearances, load } = useCosmere()
+const { events: timelineEvents, init: initEvents, isReached } = useTimelineEvents()
 await load()
+await initEvents()
+
+function isBookReached(bookSlug) {
+  return timelineEvents.value.some(ev => ev.book_slug === bookSlug && isReached(ev))
+}
 
 const character = computed(() => characters.value.find(c => c.id === route.params.id))
 
+// Only the books reached so far — a character navigated to directly (e.g. a
+// bookmark) shouldn't have their future appearances spoiled here either.
 const allAppearances = computed(() =>
   appearances.value
-    .filter(a => a.characterId === route.params.id)
+    .filter(a => a.characterId === route.params.id && isBookReached(a.bookId))
     .map(a => ({
       appearance: a,
       book: books.value.find(b => b.slug === a.bookId),

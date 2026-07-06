@@ -29,6 +29,13 @@ export function useSystemSettings() {
     await updateDoc(doc(db, 'planetary_systems', slug), { name })
   }
 
+  async function setSystemExistsFromStart(slug, value) {
+    const system = systems.value.find(s => s.slug === slug)
+    if (system) system.exists_from_start = value
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planetary_systems', slug), { exists_from_start: value })
+  }
+
   async function setSystemBodyParticulateRing(systemSlug, memberIndex, value) {
     const system = systems.value.find(s => s.slug === systemSlug)
     if (!system) return
@@ -174,5 +181,5 @@ export function useSystemSettings() {
     systems.value = [...systems.value, { slug: newSlug, ...newSystem }]
   }
 
-  return { systems, init, cloneSystem, batchUpdateSystemPositions, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint }
+  return { systems, init, cloneSystem, batchUpdateSystemPositions, updateSystemMembers, setSystemName, setSystemExistsFromStart, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint }
 }

@@ -22,7 +22,13 @@
     </section>
 
     <section class="mb-10">
-      <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Timeline Events</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest">Timeline Events</h2>
+        <div class="flex items-center gap-2">
+          <button type="button" class="text-xs text-indigo-400 hover:text-blue-100 transition-colors" @click="doResort">Resort by year</button>
+          <span v-if="resortStatus === 'done'" class="text-xs text-green-400">Done</span>
+        </div>
+      </div>
       <div class="space-y-3">
         <TimelineEventForm
           :draft="newDraft"
@@ -43,6 +49,7 @@
                 :books="books"
                 :systems="systems"
                 :planets="planets"
+                :exclude-slug="ev.slug"
                 submit-label="Save"
                 :show-cancel="true"
                 :status="editStatus"
@@ -51,19 +58,33 @@
                 @cancel="cancelEditEvent"
               />
             </div>
-            <div v-else class="py-1">
+            <div
+              v-else
+              class="py-1 rounded"
+              :class="dragSlug === ev.slug ? 'opacity-40' : ''"
+              draggable="true"
+              @dragstart="dragSlug = ev.slug"
+              @dragover.prevent
+              @dragenter.prevent
+              @drop.prevent="onDropEvent(i)"
+              @dragend="dragSlug = null"
+            >
               <div class="flex items-center gap-2">
+                <span class="text-indigo-600 cursor-grab shrink-0" title="Drag to reorder">⠿</span>
                 <div class="flex flex-col shrink-0">
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === 0" @click="moveEvent(ev.slug, -1)">▲</button>
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === orderedEvents.length - 1" @click="moveEvent(ev.slug, 1)">▼</button>
                 </div>
-                <span class="text-xs font-mono text-indigo-400 w-24 shrink-0">{{ ev.year_start != null ? ev.year_start : '—' }}{{ ev.event_type === 'range' && ev.year_end != null ? '–' + ev.year_end : '' }}</span>
+                <span class="text-xs font-mono text-indigo-400 w-24 shrink-0">{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}{{ ev.event_type === 'range' && resolvedYearEnd(ev) != null ? '–' + resolvedYearEnd(ev) : '' }}</span>
                 <span class="flex-1 text-sm text-blue-100 truncate">{{ ev.title }}</span>
                 <span v-if="ev.book_slug" class="text-xs text-indigo-500 truncate">{{ bookTitle(ev.book_slug) }}</span>
                 <button class="text-xs text-indigo-400 hover:text-blue-100 transition-colors shrink-0" @click="startEditEvent(ev)">Edit</button>
-                <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="deleteTimelineEvent(ev.slug)">×</button>
+                <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="confirmDeleteEvent(ev)">×</button>
               </div>
               <p v-if="ev.description" class="text-xs text-indigo-500 mt-0.5 ml-[4.5rem]">{{ ev.description }}</p>
+              <div v-if="ev.entity_slugs?.length" class="flex flex-wrap gap-1 mt-0.5 ml-[4.5rem]">
+                <span v-for="slug in ev.entity_slugs" :key="slug" class="text-[10px] px-1.5 py-0.5 rounded bg-surface-700 text-indigo-300">{{ entityName(slug) }}</span>
+              </div>
             </div>
           </template>
           <p v-if="!orderedEvents.length" class="text-sm text-indigo-600 italic">No events yet.</p>
@@ -73,7 +94,8 @@
 
     <section>
       <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Admin</h2>
-      <div class="space-y-3">
+      <div class="rounded-lg border border-amber-700/40 bg-amber-950/20 p-4 space-y-3">
+        <p class="text-xs text-amber-400/80">Advanced tools that write data directly — double-check inputs before running.</p>
         <div class="flex flex-wrap items-center gap-3">
           <select v-model="cloneSource"
             class="bg-surface-700 border border-surface-600 rounded-lg px-3 py-2 text-sm text-blue-100 focus:outline-none focus:border-accent-500 transition-colors">
@@ -101,9 +123,10 @@
 const { systems, init, cloneSystem } = useSystemSettings()
 const { planets, init: initPlanets } = usePlanetSettings()
 const { books, load: loadBooks } = useCosmere()
-const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent } = useTimelineEvents()
+const { entities, init: initEntities } = useEntitySettings()
+const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, computeOrder, resolvedYearStart, resolvedYearEnd } = useTimelineEvents()
 const { timelineNewestFirst, initTimelineOrder, setTimelineNewestFirst } = useMapState()
-await Promise.all([init(), initPlanets(), loadBooks(), initEvents()])
+await Promise.all([init(), initPlanets(), loadBooks(), initEvents(), initEntities()])
 initTimelineOrder()
 
 const cloneSource = ref('')
@@ -123,30 +146,70 @@ async function doClone() {
     await cloneSystem(cloneSource.value, cloneNewSlug.value.trim(), cloneNewName.value.trim())
     cloneStatus.value = 'done'
   } catch (e) {
-    cloneError.value = e.message
+    cloneError.value = `Failed to clone system: ${e.message}`
     cloneStatus.value = 'error'
   }
+}
+
+const dragSlug = ref(null)
+async function onDropEvent(toIndex) {
+  const slug = dragSlug.value
+  dragSlug.value = null
+  const list = [...orderedEvents.value]
+  const fromIndex = list.findIndex(e => e.slug === slug)
+  if (fromIndex === -1 || fromIndex === toIndex) return
+  const [item] = list.splice(fromIndex, 1)
+  list.splice(toIndex, 0, item)
+  await Promise.all(list.map((ev, i) => updateTimelineEvent(ev.slug, { order: i })))
+}
+
+async function confirmDeleteEvent(ev) {
+  if (!window.confirm(`Delete "${ev.title}"? This can't be undone.`)) return
+  await deleteTimelineEvent(ev.slug)
 }
 
 function bookTitle(slug) {
   return books.value.find(b => b.slug === slug)?.title ?? slug
 }
 
+function entityName(slug) {
+  return entities.value.find(e => e.slug === slug)?.name ?? slug
+}
+
+const resortStatus = ref('idle')
+async function doResort() {
+  resortStatus.value = 'running'
+  await resortByYear()
+  resortStatus.value = 'done'
+}
+
 function emptyDraft() {
-  return { type: 'instance', title: '', yearStart: '', yearEnd: '', bookSlug: '', systemSlug: '', planetSlug: '', description: '', orbitEventIds: [] }
+  return {
+    type: 'instance', title: '', description: '',
+    yearMode: 'absolute', yearStart: '', anchorSlug: '', anchorOffset: '',
+    endMode: 'absolute', yearEnd: '', duration: '',
+    bookSlug: '', systemSlug: '', planetSlug: '', zoomScope: 'planet', orbitEventIds: [], entitySlugs: [],
+  }
 }
 
 function draftToPatch(draft) {
+  const isUndated = draft.yearMode === 'absolute' && draft.yearStart === ''
   return {
     title: draft.title.trim() || (draft.bookSlug ? bookTitle(draft.bookSlug) : ''),
     description: draft.description.trim(),
     event_type: draft.type,
-    year_start: draft.yearStart === '' ? null : Number(draft.yearStart),
-    year_end: draft.type === 'range' ? Number(draft.yearEnd) : null,
+    year_start: draft.yearMode === 'absolute' && draft.yearStart !== '' ? Number(draft.yearStart) : null,
+    year_end: draft.type === 'range' && draft.endMode === 'absolute' ? Number(draft.yearEnd) : null,
+    anchor_slug: draft.yearMode === 'relative' ? draft.anchorSlug : null,
+    anchor_offset: draft.yearMode === 'relative' ? Number(draft.anchorOffset) : null,
+    duration: draft.type === 'range' && draft.endMode === 'duration' ? Number(draft.duration) : null,
     book_slug: draft.bookSlug || null,
     planet_slug: draft.planetSlug || null,
     system_slug: draft.systemSlug || null,
+    zoom_scope: draft.planetSlug && draft.zoomScope === 'system' ? 'system' : null,
     orbit_event_ids: draft.orbitEventIds ?? [],
+    entity_slugs: draft.entitySlugs ?? [],
+    order: computeOrder(isUndated),
   }
 }
 
@@ -162,7 +225,7 @@ async function doAddEvent() {
     Object.assign(newDraft, emptyDraft())
     addEventStatus.value = 'done'
   } catch (e) {
-    addEventError.value = e.message
+    addEventError.value = `Failed to add event: ${e.message}`
     addEventStatus.value = 'error'
   }
 }
@@ -177,13 +240,20 @@ function startEditEvent(ev) {
   Object.assign(editDraft, {
     type: ev.event_type,
     title: ev.title,
+    yearMode: ev.anchor_slug ? 'relative' : 'absolute',
     yearStart: ev.year_start ?? '',
+    anchorSlug: ev.anchor_slug ?? '',
+    anchorOffset: ev.anchor_offset ?? '',
+    endMode: ev.duration != null ? 'duration' : 'absolute',
     yearEnd: ev.year_end ?? '',
+    duration: ev.duration ?? '',
     bookSlug: ev.book_slug ?? '',
     systemSlug: ev.system_slug ?? '',
     planetSlug: ev.planet_slug ?? '',
+    zoomScope: ev.zoom_scope === 'system' ? 'system' : 'planet',
     description: ev.description ?? '',
     orbitEventIds: [...(ev.orbit_event_ids ?? [])],
+    entitySlugs: [...(ev.entity_slugs ?? [])],
   })
   editStatus.value = 'idle'
   editError.value = ''
@@ -200,7 +270,7 @@ async function saveEditEvent() {
     await updateTimelineEvent(editingSlug.value, draftToPatch(editDraft))
     editingSlug.value = null
   } catch (e) {
-    editError.value = e.message
+    editError.value = `Failed to save event: ${e.message}`
     editStatus.value = 'error'
   }
 }

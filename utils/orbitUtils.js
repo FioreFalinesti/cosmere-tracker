@@ -1,50 +1,53 @@
-function eventEffectiveYear(ev) {
-  return ev.event_type === 'range' ? (ev.year_end ?? ev.year_start) : ev.year_start
-}
+import { isEventTriggerReached } from '~/composables/useTimelineEvents.js'
 
 /**
- * An orbit event is "revealed" once any Timeline Event that references it
- * (via orbit_event_ids) has reached its narrative year per the timeline
- * scrubber. An orbit event with no referencing Timeline Event is never
- * revealed — it's just sitting there unlinked.
- */
-function isOrbitEventRevealed(orbitEventId, timelineEvents, nowYear) {
-  return timelineEvents.some(ev =>
-    (ev.orbit_event_ids ?? []).includes(orbitEventId) &&
-    eventEffectiveYear(ev) <= nowYear
-  )
-}
-
-/**
- * Resolves the effective orbit distance (px from star centre) for a planet,
- * applying any orbit_events override whose linked Timeline Event has been
- * reached per the timeline scrubber. An orbit event only counts if it
- * carries an orbit change — it may also carry an unrelated color change.
+ * Resolves the effective value of `field` on the latest entry (scanning from
+ * the end) whose linked Timeline Event has been reached per the timeline
+ * scrubber — falling back to `baseline` if none has. Uses `field in ev`
+ * rather than `ev[field] != null` so a legitimate falsy override value
+ * (`false`, `0`, `''`) still counts as "this entry carries a change", not
+ * just "this entry carries a change and it happens to be non-null".
  *
- * Events are appended chronologically as they're authored, so the most
- * recently revealed one (scanning from the end) reflects current story
- * state — not just the first one in the array to have been revealed.
+ * Events are appended chronologically as they're authored, so the latest
+ * revealed one (scanning from the end) reflects current story state — not
+ * just the first one in the array to have been revealed.
  */
-export function resolveOrbitDistance(events, baselineDist, timelineEvents, nowYear) {
-  if (!events || events.length === 0) return baselineDist
+function resolveField(events, field, baseline) {
+  if (!events || events.length === 0) return baseline
   const match = [...events].reverse().find(ev =>
-    ev.orbit_after != null &&
-    isOrbitEventRevealed(ev.id, timelineEvents, nowYear)
+    field in ev &&
+    isEventTriggerReached(ev.id)
   )
-  return match ? match.orbit_after : baselineDist
+  return match ? match[field] : baseline
 }
 
-/**
- * Resolves the effective color for a planet, applying any orbit_events
- * color override whose linked Timeline Event has been reached. An orbit
- * event only counts if it carries a color change. See resolveOrbitDistance
- * for why the latest revealed event (not the first) wins.
- */
-export function resolveColor(events, baseColor, timelineEvents, nowYear) {
-  if (!events || events.length === 0) return baseColor
-  const match = [...events].reverse().find(ev =>
-    ev.color_after != null &&
-    isOrbitEventRevealed(ev.id, timelineEvents, nowYear)
-  )
-  return match ? match.color_after : baseColor
+/** Resolves the effective orbit distance (px from star centre) for a planet. */
+export function resolveOrbitDistance(events, baselineDist) {
+  return resolveField(events, 'orbit_after', baselineDist)
 }
+
+/** Resolves the effective color for a planet. */
+export function resolveColor(events, baseColor) {
+  return resolveField(events, 'color_after', baseColor)
+}
+
+/** Resolves whether a planet/system currently exists. */
+export function resolveExists(events, baselineExists) {
+  return resolveField(events, 'exists_after', baselineExists)
+}
+
+/** Resolves an entity's (e.g. a Shard's) current status. */
+export function resolveStatus(events, baselineStatus) {
+  return resolveField(events, 'status_after', baselineStatus)
+}
+
+/** Resolves an entity's (e.g. a Shard's) current location (a system slug). */
+export function resolveLocation(events, baselineSlug) {
+  return resolveField(events, 'location_after', baselineSlug)
+}
+
+// A Shard whose resolved status lands here is no longer a distinct active
+// Shard from that point on — splintered/destroyed (killed), or combined into
+// a new fused Shard (e.g. Ruin + Preservation -> Harmony) — so it drops out
+// of any "currently held Shards" view (map badges, Characters page filter).
+export const TERMINAL_SHARD_STATUSES = ['splintered', 'destroyed', 'combined']

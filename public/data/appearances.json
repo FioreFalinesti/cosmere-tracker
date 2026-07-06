@@ -18,5 +18,8 @@
   { "characterId": "omin", "bookId": "elantris", "role": "minor" },
   { "characterId": "seinalan", "bookId": "elantris", "role": "minor" },
   { "characterId": "eventeo", "bookId": "elantris", "role": "minor" },
-  { "characterId": "ashe", "bookId": "elantris", "role": "major" }
+  { "characterId": "ashe", "bookId": "elantris", "role": "major" },
+  { "characterId": "sazed", "bookId": "the-final-empire", "role": "major" },
+  { "characterId": "sazed", "bookId": "the-well-of-ascension", "role": "major" },
+  { "characterId": "sazed", "bookId": "the-hero-of-ages", "role": "major" }
 ]

@@ -1,13 +1,6 @@
 import { collection, query, orderBy, doc, updateDoc, setDoc, getDocs, onSnapshot } from 'firebase/firestore'
 import { resolveColor } from '~/utils/orbitUtils'
-
-function darkenHex(hex, factor = 0.3) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const h = n => Math.round(n * factor).toString(16).padStart(2, '0')
-  return `#${h(r)}${h(g)}${h(b)}`
-}
+import { darkenHex } from '~/utils/colorUtils'
 
 const planets = ref([])
 const initialized = ref(false)
@@ -54,10 +47,10 @@ export function usePlanetSettings() {
     await updateDoc(doc(db, 'planets', slug), { color })
   }
 
-  function nodeData(planet, timelineEvents, nowYear, preview) {
+  function nodeData(planet, preview) {
     const isGasGiant = planet.is_gas_giant ?? false
     const size = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
-    let color = resolveColor(planet.orbit_events ?? [], planet.color, timelineEvents, nowYear)
+    let color = resolveColor(planet.orbit_events ?? [], planet.color)
     if (preview && preview.color && preview.planetSlug === planet.slug) {
       color = preview.showAfter ? preview.color.after : preview.color.before
     }
@@ -90,6 +83,13 @@ export function usePlanetSettings() {
     if (planet) planet.uninhabited = value
     const db = useFirestore()
     await updateDoc(doc(db, 'planets', slug), { uninhabited: value })
+  }
+
+  async function setExistsFromStart(slug, value) {
+    const planet = planets.value.find(p => p.slug === slug)
+    if (planet) planet.exists_from_start = value
+    const db = useFirestore()
+    await updateDoc(doc(db, 'planets', slug), { exists_from_start: value })
   }
 
   async function setGasGiant(slug, value) {
@@ -227,5 +227,5 @@ export function usePlanetSettings() {
     })
   }
 
-  return { planets, init, setColor, setWiki, setSizeMultiplier, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, computeOrbitRadii, setPlanetName, renameMoon }
+  return { planets, init, setColor, setWiki, setSizeMultiplier, setUninhabited, setExistsFromStart, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, nodeData, computeOrbitRadii, setPlanetName, renameMoon }
 }

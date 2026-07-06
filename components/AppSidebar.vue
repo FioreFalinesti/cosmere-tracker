@@ -1,43 +1,33 @@
 <template>
-  <aside class="w-64 shrink-0 border-r border-surface-700 bg-surface-900 h-full flex flex-col">
-    <TimelineList v-if="showSidebarLists" />
+  <aside
+    v-if="hasContent"
+    class="shrink-0 border-r border-surface-700 bg-surface-900 h-full flex flex-col"
+    :class="collapsed ? 'w-8' : 'w-[480px]'"
+  >
+    <button
+      class="shrink-0 h-8 flex items-center justify-center text-indigo-500 hover:text-blue-100 hover:bg-surface-800 transition-colors"
+      :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+      @click="collapsed = !collapsed"
+    >{{ collapsed ? '»' : '«' }}</button>
 
-    <!-- Edit positions — map page only -->
-    <div v-if="route.path === '/'" class="shrink-0 border-t border-surface-700 px-4 py-3">
-      <template v-if="!editPositions">
-        <button
-          class="w-full py-2 rounded-lg text-sm font-medium bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-blue-100 transition-colors"
-          @click="startEdit"
-        >
-          Edit Positions
-        </button>
-      </template>
-      <template v-else>
-        <div class="flex gap-2">
-          <button
-            class="flex-1 py-2 rounded-lg text-sm font-medium bg-accent-600 hover:bg-accent-500 text-white transition-colors"
-            @click="saveEdit"
-          >
-            Save
-          </button>
-          <button
-            class="flex-1 py-2 rounded-lg text-sm font-medium bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-red-400 transition-colors"
-            @click="cancelEdit"
-          >
-            Cancel
-          </button>
-        </div>
-      </template>
-    </div>
+    <template v-if="!collapsed">
+      <TimelineList v-if="showSidebarLists" />
+    </template>
   </aside>
 </template>
 
 <script setup>
-const { editPositions, initTimelineOrder, startEdit, saveEdit, cancelEdit } = useMapState()
+const { initTimelineOrder } = useMapState()
 const route = useRoute()
 
-const SIDEBAR_LIST_PATHS = ['/', '/settings']
+// Settings page has its own full editable event list — showing the read-only
+// timeline here too would just duplicate it. /shards and /characters don't
+// have their own way to change which event is "current", so they need it.
+const SIDEBAR_LIST_PATHS = ['/', '/shards', '/characters']
 const showSidebarLists = computed(() => SIDEBAR_LIST_PATHS.includes(route.path))
+const hasContent = computed(() => showSidebarLists.value || route.path === '/')
+
+const collapsed = ref(false)
 
 initTimelineOrder()
 </script>

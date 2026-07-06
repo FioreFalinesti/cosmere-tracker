@@ -44,7 +44,7 @@
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { averageHexColors } from '~/utils/colorUtils'
-import { resolveOrbitDistance } from '~/utils/orbitUtils'
+import { resolveOrbitDistance, resolveExists, resolveLocation, resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/orbitUtils'
 import { getMoonOrbitType, getSatelliteType } from '~/utils/satelliteUtils'
 
 definePageMeta({ layout: 'map' })
@@ -52,23 +52,60 @@ definePageMeta({ layout: 'map' })
 const { books, load } = useCosmere()
 const { planets, init: initPlanets, nodeData, computeOrbitRadii } = usePlanetSettings()
 const { systems, init: initSystems } = useSystemSettings()
+const { entities, init: initEntities } = useEntitySettings()
 const { editPositions, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
-const { events: timelineEvents, init: initEvents, nowYear, eventYear } = useTimelineEvents()
+const { init: initEvents, currentEvent } = useTimelineEvents()
 
 await load()
 await initPlanets()
 await initSystems()
+await initEntities()
 await initEvents()
 
+// Shift camera focus to wherever the timeline scrubber currently points —
+// an event's system/planet link now drives "where are we looking", not
+// visibility. Events with neither field leave the camera untouched. An event
+// with both links defaults to focusing the specific planet, but can opt into
+// framing the whole system instead via zoom_scope (e.g. "arrives in the
+// system" reads better zoomed out than snapped to one planet in it).
+watch(currentEvent, ev => {
+  if (!ev) return
+  if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
+  else if (ev.planet_slug) zoomTarget.value = { type: 'planet', slug: ev.planet_slug }
+  else if (ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
+}, { immediate: true })
 
 function planetSize(p) {
   return Math.floor(Math.max(0.1, p.size_multiplier ?? 1) * 64)
 }
 
-// A system is revealed once the timeline scrubber has reached a timeline
-// event linked to it (directly, or via a linked planet's auto-filled system).
-function isSystemRevealed(systemSlug) {
-  return timelineEvents.value.some(ev => ev.system_slug === systemSlug && eventYear(ev) <= nowYear.value)
+// Most systems/planets are pre-existing astronomical fixtures and are shown
+// unconditionally (exists_from_start defaults true when absent — no
+// migration needed). A body only needs gating if it's explicitly marked
+// exists_from_start:false, in which case it stays hidden until a revealed
+// existence_events/orbit_events entry flips it to exists_after:true.
+function isVisible(entity, eventsField) {
+  const baseline = entity.exists_from_start !== false
+  return resolveExists(entity[eventsField] ?? [], baseline)
+}
+
+// Shards and splinter-remnants (e.g. the Dor) currently located at a given
+// system/planet slug — one that's splintered, destroyed, or combined into a
+// new fused Shard drops off the map entirely rather than lingering at its
+// last known location.
+function shardBadgesAt(locationSlug) {
+  return entities.value
+    .filter(e =>
+      (e.type === 'shard' || e.type === 'splinter-remnant') &&
+      resolveLocation(e.location_events ?? [], e.location_slug) === locationSlug &&
+      !TERMINAL_SHARD_STATUSES.includes(resolveStatus(e.status_events ?? [], e.status))
+    )
+    .map(e => ({
+      slug: e.slug,
+      name: e.name,
+      color: e.color ?? '#bb88ff',
+      kind: e.type === 'splinter-remnant' ? 'remnant' : 'shard',
+    }))
 }
 
 // Vue Flow requires parent nodes to appear before their children
@@ -79,8 +116,7 @@ const visibleNodes = computed(() => {
   for (const system of systems.value) {
     const planetSlugs = (system.members ?? system.planets ?? []).filter(m => typeof m === 'string' ? true : m.type === 'planet').map(m => typeof m === 'string' ? m : m.slug)
     const allMembers = planetSlugs.map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
-    const hasVisible = system.always_visible || (allMembers.length > 0 && isSystemRevealed(system.slug))
-    if (!hasVisible) continue
+    if (allMembers.length === 0 || !isVisible(system, 'existence_events')) continue
 
     const inhabitedMembers = allMembers.filter(p => p.uninhabited !== true)
     const color = averageHexColors((inhabitedMembers.length ? inhabitedMembers : allMembers).map(p => p.color))
@@ -164,10 +200,21 @@ const visibleNodes = computed(() => {
       if (preview && preview.orbit && preview.planetSlug === mSlug) {
         return preview.showAfter ? preview.orbit.after : (preview.orbit.before ?? baseline)
       }
-      return resolveOrbitDistance(planet?.orbit_events ?? [], baseline, timelineEvents.value, nowYear.value)
+      return resolveOrbitDistance(planet?.orbit_events ?? [], baseline)
     })
 
     if (isBinary) secondaryOrbitR = memberOrbitDistances[starMemberIdx] ?? innerR + 0.65 * (autoOuterR - innerR)
+
+    // Only planet-type members can be hidden pre-existence — other member
+    // types (stars, belts, anomalies) have no exists_from_start/orbit_events
+    // gating of their own, so they're always considered visible here.
+    const memberVisible = systemMemberList.map((member, i) => {
+      const mType = typeof member === 'string' ? 'planet' : member.type
+      if (mType !== 'planet') return true
+      const mSlug = typeof member === 'string' ? member : member.slug
+      const planet = planets.value.find(p => p.slug === mSlug)
+      return planet ? isVisible(planet, 'orbit_events') : false
+    })
 
     systemNodes.push({
       id: `system-${system.slug}`,
@@ -191,6 +238,8 @@ const visibleNodes = computed(() => {
         memberTypes: systemMemberList.map(m => typeof m === 'string' ? 'planet' : m.type),
         memberOrbitDistances,
         memberLagrangePoints,
+        memberVisible,
+        shardsHere: shardBadgesAt(system.slug),
       },
     })
 
@@ -267,6 +316,7 @@ const visibleNodes = computed(() => {
       if (memberType !== 'planet') return
       const planet = planets.value.find(p => p.slug === slug)
       if (!planet) return
+      if (!isVisible(planet, 'orbit_events')) return
       const pSize = planetSize(planet)
       const lagrangePoint = memberLagrangePoints[i]
 
@@ -328,7 +378,16 @@ const visibleNodes = computed(() => {
           x: sysCX + orbitR * Math.cos(posAngle) - pSize / 2,
           y: sysCY + orbitR * Math.sin(posAngle) - pSize / 2,
         },
-        data: { ...nodeData(planet, timelineEvents.value, nowYear.value, orbitEventPreview.value), systemSlug: system.slug, memberIndex: i, memberCount: n, maxMoonOrbitR, moonOrbits, ringOrbits },
+        data: {
+          ...nodeData(planet, orbitEventPreview.value),
+          systemSlug: system.slug,
+          memberIndex: i,
+          memberCount: n,
+          maxMoonOrbitR,
+          moonOrbits,
+          ringOrbits,
+          shardsHere: shardBadgesAt(planet.slug),
+        },
       })
 
       // Moon nodes — only for non-ring satellites

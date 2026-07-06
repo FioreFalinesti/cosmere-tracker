@@ -12,8 +12,11 @@ const props = defineProps({
 const { setNodes, getNodes, findNode, updateNode, setViewport, fitView, viewport, onNodeClick, onPaneClick, onNodeDragStart, onNodeDrag } = useVueFlow()
 const { planets, computeOrbitRadii } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
-const { events: timelineEvents, nowYear } = useTimelineEvents()
 const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, editCancelled, polarOrbitAngles, orbitEventPreview } = useMapState()
+
+// Matches AppSidebar.vue's expanded width — used to compute the map's
+// available viewport width for centering/framing.
+const SIDEBAR_WIDTH = 480
 
 const originalPositions = ref({})
 
@@ -108,7 +111,7 @@ function animate() {
         const preview = orbitEventPreview.value
         const orbitR = (preview && preview.orbit && preview.planetSlug === slug)
           ? (preview.showAfter ? preview.orbit.after : (preview.orbit.before ?? baseline))
-          : resolveOrbitDistance(planet.orbit_events ?? [], baseline, timelineEvents.value, nowYear.value)
+          : resolveOrbitDistance(planet.orbit_events ?? [], baseline)
         const gravity = planet.gravity_multiplier ?? 1
         const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
         if (!(slug in planetPhaseOffsets)) planetPhaseOffsets[slug] = Math.random() * 2 * Math.PI
@@ -255,6 +258,51 @@ function animate() {
   animFrame = requestAnimationFrame(animate)
 }
 
+function findPlanetSystem(slug) {
+  return systems.value.find(s =>
+    (s.members ?? s.planets ?? []).some(m =>
+      (typeof m === 'string' ? m : m.slug) === slug && (typeof m === 'string' || m.type === 'planet')
+    )
+  )
+}
+
+// Predicts where an orbiting planet will be at a given time, using the same
+// formula as the live animation loop above. Needed because zooming to a
+// planet pans the camera over 600ms while the orbit animation keeps running
+// the whole time — targeting the planet's position at click time leaves the
+// camera centered on empty orbit track by the time the pan settles, since
+// the planet has since moved on. Deliberately separate from animate()'s loop
+// (rather than shared) since that loop computes orbit geometry once per
+// system for every planet each frame — reusing it here for a single planet
+// would be fine performance-wise, but keeping them apart avoids coupling a
+// one-off lookup to the hot per-frame path. Lagrange-locked planets co-rotate
+// with a secondary star via a different formula and aren't predicted here —
+// callers should fall back to the planet's current position for those.
+function predictPlanetCenter(slug, atTime) {
+  const system = findPlanetSystem(slug)
+  if (!system) return null
+  const geo = orbitGeometry(system)
+  if (!geo) return null
+  const { innerR, autoOuterR, cx, cy, allMembers } = geo
+  const i = allMembers.findIndex(m => (typeof m === 'string' ? m : m.slug) === slug)
+  if (i === -1) return null
+  const member = allMembers[i]
+  if (typeof member === 'object' && member.lagrange_point) return null
+  const planet = planets.value.find(p => p.slug === slug)
+  if (!planet) return null
+  const autoOrbitRadii = computeOrbitRadii(allMembers, innerR, autoOuterR)
+  const baseline = planet.orbit_distance ?? autoOrbitRadii[i]
+  const preview = orbitEventPreview.value
+  const orbitR = (preview && preview.orbit && preview.planetSlug === slug)
+    ? (preview.showAfter ? preview.orbit.after : (preview.orbit.before ?? baseline))
+    : resolveOrbitDistance(planet.orbit_events ?? [], baseline)
+  const gravity = planet.gravity_multiplier ?? 1
+  const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
+  if (!(slug in planetPhaseOffsets)) planetPhaseOffsets[slug] = Math.random() * 2 * Math.PI
+  const angle = planetPhaseOffsets[slug] + ω * atTime
+  return { x: cx + orbitR * Math.cos(angle), y: cy + orbitR * Math.sin(angle) }
+}
+
 function startAnimation() {
   if (!animFrame) animFrame = requestAnimationFrame(animate)
 }
@@ -277,7 +325,7 @@ onUnmounted(() => {
 
 function zoomToSystem(systemNode, panelOpen = false) {
   const size = systemNode.style?.width ? parseFloat(systemNode.style.width) : 200
-  const cw = window.innerWidth - 256
+  const cw = window.innerWidth - SIDEBAR_WIDTH
   const ch = window.innerHeight - 56
   const padding = 0.3
   const availableW = panelOpen ? cw * 0.8 : cw
@@ -296,13 +344,19 @@ watch(zoomTarget, target => {
       const node = findNode(target.slug)
       if (!node) return
       const pSize = node.data?.size ?? 64
-      const cw = window.innerWidth - 256
+      const cw = window.innerWidth - SIDEBAR_WIDTH
       const ch = window.innerHeight - 56
       const availableW = cw * 0.8  // account for panel
       const zoom = Math.min(4, Math.max(0.5, (availableW * 0.3) / pSize))
-      const vpX = availableW / 2 - (node.position.x + pSize / 2) * zoom
-      const vpY = ch / 2 - (node.position.y + pSize / 2) * zoom
-      setViewport({ x: vpX, y: vpY, zoom }, { duration: 600 })
+      const DURATION = 600
+      // Target where the planet WILL be once the pan finishes, not where it
+      // is right now — it keeps orbiting throughout the pan. Falls back to
+      // the current position for Lagrange-locked planets (not predicted).
+      const predicted = predictPlanetCenter(target.slug, performance.now() + DURATION)
+      const center = predicted ?? { x: node.position.x + pSize / 2, y: node.position.y + pSize / 2 }
+      const vpX = availableW / 2 - center.x * zoom
+      const vpY = ch / 2 - center.y * zoom
+      setViewport({ x: vpX, y: vpY, zoom }, { duration: DURATION })
     } else if (target.type === 'system') {
       const systemNode = findNode(`system-${target.slug}`)
       if (systemNode) zoomToSystem(systemNode, true)
@@ -338,7 +392,7 @@ onNodeClick(({ node }) => {
 // Track which system (if any) is the sole visible one in the viewport
 watchEffect(() => {
   const vp = viewport.value
-  const cw = window.innerWidth - 256
+  const cw = window.innerWidth - SIDEBAR_WIDTH
   const ch = window.innerHeight - 56
   const visibleSystems = props.nodes.filter(n => {
     if (n.type !== 'system') return false

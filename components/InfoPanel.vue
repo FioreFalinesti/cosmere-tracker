@@ -88,6 +88,15 @@
             </button>
           </div>
 
+          <div class="flex items-center justify-between py-1.5">
+            <span class="text-xs text-indigo-400 uppercase tracking-widest">Exists From Start</span>
+            <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
+              :class="selectedSystem.exists_from_start !== false ? 'bg-accent-600' : 'bg-surface-600'"
+              @click="setSystemExistsFromStart(selectedSystem.slug, selectedSystem.exists_from_start === false)">
+              <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedSystem.exists_from_start !== false ? 'translate-x-5' : 'translate-x-1'" />
+            </button>
+          </div>
+
         </div>
 
         <!-- Members section -->
@@ -406,6 +415,16 @@
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.uninhabited ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
+
+          <div class="flex items-center justify-between py-1.5">
+            <span class="text-xs text-indigo-400 uppercase tracking-widest">Exists From Start</span>
+            <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
+              :class="selectedPlanet.exists_from_start !== false ? 'bg-accent-600' : 'bg-surface-600'"
+              @click="setExistsFromStart(selectedPlanet.slug, selectedPlanet.exists_from_start === false)">
+              <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.exists_from_start !== false ? 'translate-x-5' : 'translate-x-1'" />
+            </button>
+          </div>
+          <p v-if="selectedPlanet.exists_from_start === false" class="text-xs text-indigo-600 italic">Hidden until an "Existence" orbit event for this planet is triggered.</p>
         </div>
 
         <!-- Orbit section -->
@@ -524,7 +543,7 @@
                 <select v-else :value="triggerSelectValue(ev.id)" @change="onTriggerChange(ev.id, $event)"
                   class="flex-1 min-w-0 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-[11px] text-indigo-200 focus:outline-none focus:border-accent-500 transition-colors">
                   <option value="">Unlinked</option>
-                  <option v-for="te in eligibleTimelineEvents" :key="te.slug" :value="te.slug">{{ te.title || `Untitled (${te.year_start ?? '—'})` }}</option>
+                  <option v-for="te in eligibleTimelineEvents" :key="te.slug" :value="te.slug">{{ te.title || `Untitled (${resolvedYearStart(te) ?? '—'})` }}</option>
                   <option value="__new__">+ New event…</option>
                 </select>
                 <button v-if="orbitEventsEditing" class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="deleteOrbitEvent(ev.id)">×</button>
@@ -536,6 +555,7 @@
                   <div class="w-3 h-3 rounded-full shrink-0" :style="{ background: ev.color_after }" />
                 </template>
                 <span v-if="ev.orbit_after != null" class="text-xs font-mono text-indigo-400 shrink-0">{{ ev.orbit_before ?? 'auto' }}px → {{ ev.orbit_after }}px</span>
+                <span v-if="'exists_after' in ev" class="text-xs text-indigo-400 shrink-0">{{ ev.exists_after ? 'Starts existing' : 'Stops existing' }}</span>
               </div>
               <div v-if="creatingEventFor === ev.id" class="pl-2 border-l-2 border-accent-600/40 space-y-1.5">
                 <div class="flex gap-1">
@@ -612,8 +632,24 @@
                   class="w-24 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
               </div>
             </template>
+            <label class="flex items-center gap-2 text-xs text-indigo-300 cursor-pointer">
+              <input v-model="newEventHasExists" type="checkbox" class="accent-accent-600" />
+              Existence
+            </label>
+            <template v-if="newEventHasExists">
+              <div class="flex gap-2 items-center pl-5">
+                <div class="inline-flex rounded overflow-hidden">
+                  <button type="button" class="px-2 py-1 text-xs transition-colors"
+                    :class="newEventExistsAfter ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="newEventExistsAfter = true">Starts existing</button>
+                  <button type="button" class="px-2 py-1 text-xs transition-colors"
+                    :class="!newEventExistsAfter ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                    @click="newEventExistsAfter = false">Stops existing</button>
+                </div>
+              </div>
+            </template>
             <button class="w-full px-3 py-1 bg-accent-600 hover:bg-accent-500 text-white text-xs rounded-lg transition-colors disabled:opacity-50"
-              :disabled="!newEventHasOrbit && !newEventHasColor" @click="addOrbitEvent">Add</button>
+              :disabled="!newEventHasOrbit && !newEventHasColor && !newEventHasExists" @click="addOrbitEvent">Add</button>
           </div>
         </div>
 
@@ -645,10 +681,10 @@
 <script setup>
 import { getSatelliteType, getMoonOrbitType } from '~/utils/satelliteUtils'
 
-const { planets, setPlanetName, setColor, setWiki, setSizeMultiplier, setUninhabited, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, renameMoon } = usePlanetSettings()
-const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint } = useSystemSettings()
+const { planets, setPlanetName, setColor, setWiki, setSizeMultiplier, setUninhabited, setExistsFromStart, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, renameMoon } = usePlanetSettings()
+const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint, setSystemExistsFromStart } = useSystemSettings()
 const { selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
-const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent } = useTimelineEvents()
+const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent, resolvedYearStart } = useTimelineEvents()
 
 // ── Derived state ────────────────────────────────────────────────────────────
 
@@ -1046,10 +1082,12 @@ async function onSatelliteTiltChange(moonName, event) {
 const orbitEventsEditing = ref(false)
 const newEventHasOrbit = ref(false)
 const newEventHasColor = ref(false)
+const newEventHasExists = ref(false)
 const newEventOrbitBefore = ref('')
 const newEventOrbitAfter = ref('')
 const newEventColorBefore = ref('')
 const newEventColorAfter = ref('')
+const newEventExistsAfter = ref(true)
 const previewingId = ref(null)
 const creatingEventFor = ref(null)
 const newLinkedEventDraft = reactive({ type: 'instance', title: '', yearStart: '', yearEnd: '' })
@@ -1057,12 +1095,14 @@ const newLinkedEventDraft = reactive({ type: 'instance', title: '', yearStart: '
 function resetOrbitEventDraft() {
   newEventHasOrbit.value = false
   newEventHasColor.value = false
+  newEventHasExists.value = false
   newEventOrbitBefore.value = ''
   newEventOrbitAfter.value = ''
   // Default "before" to the planet's current color — usually that's exactly
   // what you mean, and only the "after" needs to be typed.
   newEventColorBefore.value = (selectedPlanet.value?.color ?? '#888888').replace('#', '')
   newEventColorAfter.value = ''
+  newEventExistsAfter.value = true
 }
 
 watch(selectedPlanetSlug, () => {
@@ -1184,6 +1224,11 @@ async function addOrbitEvent() {
     if (!/^#[0-9a-f]{6}$/i.test(after) || !/^#[0-9a-f]{6}$/i.test(before)) return
     entry.color_before = before
     entry.color_after = after
+    hasChange = true
+  }
+
+  if (newEventHasExists.value) {
+    entry.exists_after = newEventExistsAfter.value
     hasChange = true
   }
 
