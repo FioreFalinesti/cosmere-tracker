@@ -151,6 +151,8 @@
 </template>
 
 <script setup>
+import { systemPlanetSlugs } from '~/utils/systemMembers'
+
 const props = defineProps({
   draft: { type: Object, required: true },
   books: { type: Array, required: true },
@@ -177,12 +179,6 @@ const anchorOptions = computed(() => orderedEvents.value.filter(e => e.slug !== 
 function anchorLabel(ev) {
   const year = eventYear(ev)
   return `${ev.title || 'Untitled'}${year != null ? ` (${year})` : ''}`
-}
-
-function systemPlanetSlugs(system) {
-  return (system?.members ?? system?.planets ?? [])
-    .filter(m => typeof m === 'string' || m.type === 'planet')
-    .map(m => typeof m === 'string' ? m : m.slug)
 }
 
 function systemForPlanet(planetSlug) {

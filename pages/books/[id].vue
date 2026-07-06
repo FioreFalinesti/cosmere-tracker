@@ -1,5 +1,5 @@
 <template>
-  <div v-if="book">
+  <div v-if="book && isBookReached(book.slug)">
     <NuxtLink to="/books" class="inline-flex items-center gap-1 text-sm text-indigo-400 hover:text-blue-200 mb-6 transition-colors">
       ← All Books
     </NuxtLink>
@@ -77,7 +77,9 @@
 <script setup>
 const route = useRoute()
 const { books, characters, appearances, load } = useCosmere()
+const { init: initEvents, isBookReached } = useTimelineEvents()
 await load()
+await initEvents()
 
 const book = computed(() => books.value.find(b => b.slug === route.params.id))
 

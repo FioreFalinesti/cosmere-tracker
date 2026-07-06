@@ -2,7 +2,10 @@
 
 <script setup>
 import { useVueFlow } from '@vue-flow/core'
-import { resolveOrbitDistance } from '~/utils/orbitUtils'
+import { resolveOrbitDistance } from '~/utils/timelineFieldResolvers'
+import { SIDEBAR_WIDTH } from '~/composables/useMapState'
+import { memberSlug, memberType, systemMembers, systemPlanetSlugs } from '~/utils/systemMembers'
+import { bodyVisualSize } from '~/utils/bodyVisuals'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
@@ -14,18 +17,16 @@ const { planets, computeOrbitRadii } = usePlanetSettings()
 const { systems, batchUpdateSystemPositions } = useSystemSettings()
 const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, editCancelled, polarOrbitAngles, orbitEventPreview } = useMapState()
 
-// Matches AppSidebar.vue's expanded width — used to compute the map's
-// available viewport width for centering/framing.
-const SIDEBAR_WIDTH = 480
-
 const originalPositions = ref({})
 
 // Re-fit viewport whenever the set of visible systems changes
 let prevSystemKey = ''
+let fitToSystemsTimer = null
 function fitToSystems(nodes) {
   const systemIds = nodes.filter(n => n.type === 'system').map(n => n.id)
   if (systemIds.length === 0) return
-  setTimeout(() => fitView({ nodes: systemIds, padding: 0.15, duration: 500 }), 100)
+  clearTimeout(fitToSystemsTimer)
+  fitToSystemsTimer = setTimeout(() => fitView({ nodes: systemIds, padding: 0.15, duration: 500 }), 100)
 }
 
 watch(() => props.nodes, nodes => {
@@ -66,14 +67,13 @@ function orbitGeometry(system) {
   const systemNode = findNode(`system-${system.slug}`)
   if (!systemNode) return null
   const size = systemNode.style?.width ? parseFloat(systemNode.style.width) : 400
-  const starVisualR = Math.floor(Math.max(0.1, systemNode.data?.starSize ?? 1) * 64) / 2
+  const starVisualR = bodyVisualSize(systemNode.data?.starSize) / 2
   const innerR = Math.round(starVisualR) + 20
-  const allMembers = system.members ?? system.planets ?? []
+  const allMembers = systemMembers(system)
   const autoOuterR = innerR + Math.max(80, allMembers.length * 55)
-  const outerR = size / 2 - 40
   const cx = systemNode.position.x + size / 2
   const cy = systemNode.position.y + size / 2
-  return { innerR, autoOuterR, outerR, cx, cy, allMembers }
+  return { innerR, autoOuterR, cx, cy, allMembers }
 }
 
 function lagrangePos(lagrangePoint, secondaryOrbitR, secondaryAngle) {
@@ -101,8 +101,8 @@ function animate() {
       const autoOrbitRadii = computeOrbitRadii(allMembers, innerR, autoOuterR)
 
       allMembers.forEach((member, i) => {
-        const slug = typeof member === 'string' ? member : member.slug
-        const type = typeof member === 'string' ? 'planet' : member.type
+        const slug = memberSlug(member)
+        const type = memberType(member)
         if (type !== 'planet') return
         if (typeof member === 'object' && member.lagrange_point) return  // fixed at Lagrange point
         const planet = planets.value.find(p => p.slug === slug)
@@ -116,7 +116,7 @@ function animate() {
         const ω = SPEED * gravity / Math.pow(orbitR, 1.5)
         if (!(slug in planetPhaseOffsets)) planetPhaseOffsets[slug] = Math.random() * 2 * Math.PI
         const angle = planetPhaseOffsets[slug] + ω * t
-        const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
+        const pSize = bodyVisualSize(planet.size_multiplier)
         if (planet.polar_orbit_moons?.length) polarOrbitAngles[slug] = angle + Math.PI / 2
         updateNode(slug, {
           position: {
@@ -135,13 +135,13 @@ function animate() {
 
       // A system is binary if it has a star-type member; also used as the
       // Lagrange co-rotation reference below.
-      const starMemberIdx = allMembers.findIndex(m => typeof m === 'object' && m.type === 'star')
+      const starMemberIdx = allMembers.findIndex(m => memberType(m) === 'star')
       if (starMemberIdx === -1) continue
       let secondaryAngle = -Math.PI / 2
 
       // Animate each star-type member as a secondary star node
       allMembers.forEach((member, mi) => {
-        if (typeof member !== 'object' || member.type !== 'star') return
+        if (memberType(member) !== 'star') return
         const nodeId = `secondary-${system.slug}-${mi}`
         const ssNode = findNode(nodeId)
         if (!ssNode) return
@@ -169,7 +169,7 @@ function animate() {
         const lp = lagrangePos(member.lagrange_point, secOrbitR, secondaryAngle)
         const lagrangeR = planet.orbit_distance ?? lp.r
         if (planet.polar_orbit_moons?.length) polarOrbitAngles[member.slug] = lp.a + Math.PI / 2
-        const pSize = Math.floor(Math.max(0.1, planet.size_multiplier ?? 1) * 64)
+        const pSize = bodyVisualSize(planet.size_multiplier)
         updateNode(member.slug, {
           position: {
             x: cx + lagrangeR * Math.cos(lp.a) - pSize / 2,
@@ -259,11 +259,7 @@ function animate() {
 }
 
 function findPlanetSystem(slug) {
-  return systems.value.find(s =>
-    (s.members ?? s.planets ?? []).some(m =>
-      (typeof m === 'string' ? m : m.slug) === slug && (typeof m === 'string' || m.type === 'planet')
-    )
-  )
+  return systems.value.find(s => systemPlanetSlugs(s).includes(slug))
 }
 
 // Predicts where an orbiting planet will be at a given time, using the same
@@ -284,7 +280,7 @@ function predictPlanetCenter(slug, atTime) {
   const geo = orbitGeometry(system)
   if (!geo) return null
   const { innerR, autoOuterR, cx, cy, allMembers } = geo
-  const i = allMembers.findIndex(m => (typeof m === 'string' ? m : m.slug) === slug)
+  const i = allMembers.findIndex(m => memberSlug(m) === slug)
   if (i === -1) return null
   const member = allMembers[i]
   if (typeof member === 'object' && member.lagrange_point) return null
@@ -380,12 +376,9 @@ onNodeClick(({ node }) => {
     zoomTarget.value = { type: 'planet', slug: node.id }
   }
   if (node.type === 'anomaly') {
-    const parts = node.id.split('-')
-    const memberIndex = parseInt(parts[parts.length - 1], 10)
-    const systemSlug = parts.slice(1, -1).join('-')
-    selectedSystemSlug.value = systemSlug
+    selectedSystemSlug.value = node.data.systemSlug
     selectedPlanetSlug.value = null
-    selectedBodyMemberIndex.value = memberIndex
+    selectedBodyMemberIndex.value = node.data.memberIndex
   }
 })
 
@@ -406,16 +399,14 @@ watchEffect(() => {
   viewingSystem.value = visibleSystems.length === 1 ? visibleSystems[0].data.slug : null
 })
 
+const dragStartPositions = {}
+
 onNodeDragStart(({ node }) => {
   if (!props.editPositions || node.type !== 'system') return
   dragStartPositions[node.id] = { ...node.position }
   const systemSlug = node.id.replace('system-', '')
   const system = systems.value.find(s => s.slug === systemSlug)
-  const slugs = new Set(
-    (system?.members ?? system?.planets ?? [])
-      .filter(m => (typeof m === 'string') || m.type === 'planet')
-      .map(m => typeof m === 'string' ? m : m.slug)
-  )
+  const slugs = new Set(systemPlanetSlugs(system))
   getNodes.value.forEach(n => {
     if ((n.type === 'planet' && slugs.has(n.id)) ||
         (n.type === 'moon' && slugs.has(n.data.parentSlug)) ||
@@ -433,11 +424,7 @@ onNodeDrag(({ node }) => {
   const dy = node.position.y - start.y
   const systemSlug = node.id.replace('system-', '')
   const system = systems.value.find(s => s.slug === systemSlug)
-  const slugs = new Set(
-    (system?.members ?? system?.planets ?? [])
-      .filter(m => (typeof m === 'string') || m.type === 'planet')
-      .map(m => typeof m === 'string' ? m : m.slug)
-  )
+  const slugs = new Set(systemPlanetSlugs(system))
   getNodes.value.forEach(n => {
     if ((n.type === 'planet' && slugs.has(n.id)) ||
         (n.type === 'moon' && slugs.has(n.data.parentSlug)) ||
@@ -447,8 +434,6 @@ onNodeDrag(({ node }) => {
     }
   })
 })
-
-const dragStartPositions = {}
 
 watch(() => props.editPositions, async (newVal, oldVal) => {
   if (newVal && !oldVal) {

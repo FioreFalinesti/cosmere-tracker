@@ -43,13 +43,9 @@
 <script setup>
 const route = useRoute()
 const { characters, books, appearances, load } = useCosmere()
-const { events: timelineEvents, init: initEvents, isReached } = useTimelineEvents()
+const { init: initEvents, isBookReached } = useTimelineEvents()
 await load()
 await initEvents()
-
-function isBookReached(bookSlug) {
-  return timelineEvents.value.some(ev => ev.book_slug === bookSlug && isReached(ev))
-}
 
 const character = computed(() => characters.value.find(c => c.id === route.params.id))
 

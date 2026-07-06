@@ -83,7 +83,7 @@
             <span class="text-xs text-indigo-400 uppercase tracking-widest">Particulate Ring</span>
             <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedSystem.star_particulate_ring ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setStarParticulateRing(selectedSystem.slug, !selectedSystem.star_particulate_ring)">
+              @click="setSystemStarParticulateRing(selectedSystem.slug, !selectedSystem.star_particulate_ring)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedSystem.star_particulate_ring ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -125,7 +125,7 @@
                   @change="onPlanetOrbitChange(member.slug, $event)"
                   class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0"
                 />
-                <select v-if="(selectedSystem.members ?? []).some(m => typeof m === 'object' && m.type === 'star')"
+                <select v-if="systemMembers(selectedSystem).some(m => memberType(m) === 'star')"
                   :value="member.lagrange_point ?? ''"
                   @change="onLagrangeChange(mi, $event)"
                   class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors">
@@ -411,7 +411,7 @@
             <span v-if="planetType !== 'normal'" class="text-xs text-indigo-600 italic">Auto</span>
             <button v-else class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedPlanet.uninhabited ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setUninhabited(selectedPlanet.slug, !selectedPlanet.uninhabited)">
+              @click="setPlanetUninhabited(selectedPlanet.slug, !selectedPlanet.uninhabited)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.uninhabited ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -420,7 +420,7 @@
             <span class="text-xs text-indigo-400 uppercase tracking-widest">Exists From Start</span>
             <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedPlanet.exists_from_start !== false ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setExistsFromStart(selectedPlanet.slug, selectedPlanet.exists_from_start === false)">
+              @click="setPlanetExistsFromStart(selectedPlanet.slug, selectedPlanet.exists_from_start === false)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.exists_from_start !== false ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -447,7 +447,7 @@
                   @click="startOrbitDistanceEdit">{{ selectedPlanet.orbit_distance != null ? `${selectedPlanet.orbit_distance}px` : 'Auto' }}</button>
                 <button v-if="selectedPlanet.orbit_distance != null"
                   class="text-indigo-600 hover:text-red-400 text-xs leading-none transition-colors" title="Reset to auto"
-                  @click="setOrbitDistance(selectedPlanet.slug, null)">×</button>
+                  @click="setPlanetOrbitDistance(selectedPlanet.slug, null)">×</button>
               </template>
             </div>
           </div>
@@ -474,13 +474,13 @@
                   @click="startMoonRename(moon, mi)">{{ moon }}</button>
                 <select
                   :value="getSatelliteType(selectedPlanet, moon)"
-                  @change="setSatelliteType(selectedPlanet.slug, moon, $event.target.value)"
+                  @change="setPlanetSatelliteType(selectedPlanet.slug, moon, $event.target.value)"
                   class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors">
                   <option value="moon">Moon</option>
                   <option value="ring">Ring</option>
                 </select>
                 <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0"
-                  @click="updateMoons(selectedPlanet.slug, (selectedPlanet.moons ?? []).filter(m => m !== moon))">×</button>
+                  @click="updatePlanetMoons(selectedPlanet.slug, (selectedPlanet.moons ?? []).filter(m => m !== moon))">×</button>
               </div>
               <!-- Row 2: orbit + type-specific controls -->
               <div class="flex items-center gap-1.5 pl-2">
@@ -557,30 +557,19 @@
                 <span v-if="ev.orbit_after != null" class="text-xs font-mono text-indigo-400 shrink-0">{{ ev.orbit_before ?? 'auto' }}px → {{ ev.orbit_after }}px</span>
                 <span v-if="'exists_after' in ev" class="text-xs text-indigo-400 shrink-0">{{ ev.exists_after ? 'Starts existing' : 'Stops existing' }}</span>
               </div>
-              <div v-if="creatingEventFor === ev.id" class="pl-2 border-l-2 border-accent-600/40 space-y-1.5">
-                <div class="flex gap-1">
-                  <button type="button" class="flex-1 px-2 py-1 text-[10px] rounded transition-colors"
-                    :class="newLinkedEventDraft.type === 'instance' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
-                    @click="newLinkedEventDraft.type = 'instance'">Instance</button>
-                  <button type="button" class="flex-1 px-2 py-1 text-[10px] rounded transition-colors"
-                    :class="newLinkedEventDraft.type === 'range' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
-                    @click="newLinkedEventDraft.type = 'range'">Range</button>
-                </div>
-                <div class="flex gap-1.5">
-                  <input v-model="newLinkedEventDraft.yearStart" type="number" :placeholder="newLinkedEventDraft.type === 'range' ? 'Start' : 'Year'"
-                    class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
-                  <input v-if="newLinkedEventDraft.type === 'range'" v-model="newLinkedEventDraft.yearEnd" type="number" placeholder="End"
-                    class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] font-mono text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
-                  <input v-model="newLinkedEventDraft.title" type="text" placeholder="Title (optional)"
-                    class="flex-1 min-w-0 bg-surface-700 border border-surface-600 rounded px-1.5 py-1 text-[11px] text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors" />
-                </div>
-                <div class="flex gap-2">
-                  <button class="flex-1 px-2 py-1 bg-accent-600 hover:bg-accent-500 text-white text-[10px] rounded transition-colors disabled:opacity-50"
-                    :disabled="newLinkedEventDraft.yearStart === ''"
-                    @click="createLinkedEvent(ev.id)">Create &amp; Link</button>
-                  <button type="button" class="px-2 py-1 bg-surface-700 hover:bg-surface-600 text-indigo-300 text-[10px] rounded transition-colors"
-                    @click="creatingEventFor = null">Cancel</button>
-                </div>
+              <div v-if="creatingEventFor === ev.id" class="pl-2 border-l-2 border-accent-600/40">
+                <TimelineEventForm
+                  :draft="newLinkedEventDraft"
+                  :books="books"
+                  :systems="systems"
+                  :planets="planets"
+                  submit-label="Create &amp; Link"
+                  :show-cancel="true"
+                  :status="createLinkedEventStatus"
+                  :error="createLinkedEventError"
+                  @submit="createLinkedEvent"
+                  @cancel="creatingEventFor = null"
+                />
               </div>
               <div v-if="orbitEventsEditing" class="flex justify-end">
                 <div class="inline-flex rounded overflow-hidden">
@@ -680,11 +669,14 @@
 
 <script setup>
 import { getSatelliteType, getMoonOrbitType } from '~/utils/satelliteUtils'
+import { systemPlanetSlugs, systemMembers, memberType } from '~/utils/systemMembers'
+import { isValidHexColor } from '~/utils/colorUtils'
 
-const { planets, setPlanetName, setColor, setWiki, setSizeMultiplier, setUninhabited, setExistsFromStart, setGasGiant, setDwarfPlanet, setOrbitDistance, setTimelineEvents, setMoonOrbitDistances, setMoonOrbitType, setSatelliteType, setSatelliteThickness, setSatelliteTilt, createPlanet, updateMoons, renameMoon } = usePlanetSettings()
-const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setStarName, setStarColor, setStarSize, setStarParticulateRing, setMemberLagrangePoint, setSystemExistsFromStart } = useSystemSettings()
+const { planets, setPlanetName, setPlanetColor, setPlanetWiki, setPlanetSizeMultiplier, setPlanetUninhabited, setPlanetExistsFromStart, setPlanetGasGiant, setPlanetDwarfPlanet, setPlanetOrbitDistance, setPlanetOrbitEvents, setPlanetMoonOrbitDistances, setPlanetMoonOrbitType, setPlanetSatelliteType, setPlanetSatelliteThickness, setPlanetSatelliteTilt, createPlanet, updatePlanetMoons, renamePlanetMoon } = usePlanetSettings()
+const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSystemBodyParticulateRing, setSystemBodySize, setSystemBodyColor, setSystemBodyOrbitDistance, setSystemWiki, setSystemStarName, setSystemStarColor, setSystemStarSize, setSystemStarParticulateRing, setSystemMemberLagrangePoint, setSystemExistsFromStart } = useSystemSettings()
 const { selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
-const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent, resolvedYearStart } = useTimelineEvents()
+const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent, resolvedYearStart, timelineDraftToPatch, emptyTimelineDraft } = useTimelineEvents()
+const { books } = useCosmere()
 
 // ── Derived state ────────────────────────────────────────────────────────────
 
@@ -766,7 +758,7 @@ function startStarNameEdit() {
   starNameEditing.value = true
 }
 async function saveStarName() {
-  await setStarName(selectedSystem.value.slug, starNameDraft.value.trim())
+  await setSystemStarName(selectedSystem.value.slug, starNameDraft.value.trim())
   starNameEditing.value = false
 }
 function startStarColorEdit() {
@@ -775,7 +767,7 @@ function startStarColorEdit() {
 }
 async function saveStarColor() {
   const hex = '#' + starColorDraft.value
-  if (/^#[0-9a-f]{6}$/i.test(hex)) await setStarColor(selectedSystem.value.slug, hex)
+  if (isValidHexColor(hex)) await setSystemStarColor(selectedSystem.value.slug, hex)
   starColorEditing.value = false
 }
 function startStarSizeEdit() {
@@ -784,7 +776,7 @@ function startStarSizeEdit() {
 }
 async function saveStarSize() {
   const val = parseFloat(starSizeDraft.value)
-  if (!isNaN(val) && val > 0) await setStarSize(selectedSystem.value.slug, val)
+  if (!isNaN(val) && val > 0) await setSystemStarSize(selectedSystem.value.slug, val)
   starSizeEditing.value = false
 }
 
@@ -860,7 +852,7 @@ function startBodyColorEdit() {
 }
 async function saveBodyColor() {
   const hex = '#' + bodyColorDraft.value
-  if (/^#[0-9a-f]{6}$/i.test(hex)) await setSystemBodyColor(selectedSystem.value.slug, selectedBodyMemberIndex.value, hex)
+  if (isValidHexColor(hex)) await setSystemBodyColor(selectedSystem.value.slug, selectedBodyMemberIndex.value, hex)
   bodyColorEditing.value = false
 }
 
@@ -873,13 +865,13 @@ async function onBodyOrbitChange(memberIndex, event) {
 
 async function onPlanetOrbitChange(slug, event) {
   const val = parseInt(event.target.value, 10)
-  await setOrbitDistance(slug, isNaN(val) || val <= 0 ? null : val)
+  await setPlanetOrbitDistance(slug, isNaN(val) || val <= 0 ? null : val)
 }
 
 async function onLagrangeChange(memberIndex, event) {
   const val = event.target.value
   const lp = val ? parseInt(val, 10) : null
-  await setMemberLagrangePoint(selectedSystem.value.slug, memberIndex, lp)
+  await setSystemMemberLagrangePoint(selectedSystem.value.slug, memberIndex, lp)
 }
 
 // ── System member management ──────────────────────────────────────────────────
@@ -949,7 +941,7 @@ function startSizeEdit() {
 }
 async function saveSize() {
   const val = parseFloat(sizeDraft.value)
-  if (!isNaN(val) && val > 0) await setSizeMultiplier(selectedPlanet.value.slug, val)
+  if (!isNaN(val) && val > 0) await setPlanetSizeMultiplier(selectedPlanet.value.slug, val)
   sizeEditing.value = false
 }
 
@@ -965,7 +957,7 @@ function startOrbitDistanceEdit() {
 }
 async function saveOrbitDistance() {
   const val = parseInt(orbitDistanceDraft.value, 10)
-  await setOrbitDistance(selectedPlanet.value.slug, isNaN(val) || val <= 0 ? null : val)
+  await setPlanetOrbitDistance(selectedPlanet.value.slug, isNaN(val) || val <= 0 ? null : val)
   orbitDistanceEditing.value = false
 }
 
@@ -973,10 +965,10 @@ async function saveOrbitDistance() {
 
 async function setPlanetType(type) {
   const slug = selectedPlanet.value.slug
-  await setGasGiant(slug, type === 'gas_giant')
-  await setDwarfPlanet(slug, type === 'dwarf_planet')
-  if (type !== 'normal') await setUninhabited(slug, true)
-  if (type === 'dwarf_planet') await setSizeMultiplier(slug, 0.4)
+  await setPlanetGasGiant(slug, type === 'gas_giant')
+  await setPlanetDwarfPlanet(slug, type === 'dwarf_planet')
+  if (type !== 'normal') await setPlanetUninhabited(slug, true)
+  if (type === 'dwarf_planet') await setPlanetSizeMultiplier(slug, 0.4)
 }
 
 // ── Planet color editing ──────────────────────────────────────────────────────
@@ -992,7 +984,7 @@ function startColorEdit() {
 }
 function saveColor() {
   const hex = '#' + colorDraft.value
-  if (/^#[0-9a-f]{6}$/i.test(hex)) setColor(selectedPlanet.value.slug, hex)
+  if (isValidHexColor(hex)) setPlanetColor(selectedPlanet.value.slug, hex)
   colorEditing.value = false
 }
 
@@ -1008,7 +1000,7 @@ function startWikiEdit() {
   nextTick(() => wikiInputRef.value?.focus())
 }
 function saveWiki() {
-  setWiki(selectedPlanet.value.slug, wikiDraft.value)
+  setPlanetWiki(selectedPlanet.value.slug, wikiDraft.value)
   wikiEditing.value = false
 }
 
@@ -1020,7 +1012,7 @@ watch(selectedPlanetSlug, () => { newMoonName.value = '' })
 function addPanelMoon() {
   const name = newMoonName.value.trim()
   if (!name) return
-  updateMoons(selectedPlanet.value.slug, [...(selectedPlanet.value.moons ?? []), name])
+  updatePlanetMoons(selectedPlanet.value.slug, [...(selectedPlanet.value.moons ?? []), name])
   newMoonName.value = ''
 }
 
@@ -1033,7 +1025,7 @@ function startMoonRename(moonName, index) {
 }
 async function saveMoonRename(oldName, index) {
   const newName = moonRenameDraft.value.trim()
-  if (newName && newName !== oldName) await renameMoon(selectedPlanet.value.slug, oldName, newName)
+  if (newName && newName !== oldName) await renamePlanetMoon(selectedPlanet.value.slug, oldName, newName)
   moonRenaming.value = null
 }
 
@@ -1045,11 +1037,11 @@ async function onMoonOrbitChange(moonName, event) {
   } else {
     distances[moonName] = val
   }
-  await setMoonOrbitDistances(selectedPlanet.value.slug, distances)
+  await setPlanetMoonOrbitDistances(selectedPlanet.value.slug, distances)
 }
 
 function onMoonOrbitTypeChange(moonName, event) {
-  setMoonOrbitType(selectedPlanet.value.slug, moonName, event.target.value)
+  setPlanetMoonOrbitType(selectedPlanet.value.slug, moonName, event.target.value)
 }
 
 async function onSatelliteThicknessChange(moonName, event) {
@@ -1060,7 +1052,7 @@ async function onSatelliteThicknessChange(moonName, event) {
   } else {
     thicknesses[moonName] = val
   }
-  await setSatelliteThickness(selectedPlanet.value.slug, thicknesses)
+  await setPlanetSatelliteThickness(selectedPlanet.value.slug, thicknesses)
 }
 
 async function onSatelliteTiltChange(moonName, event) {
@@ -1071,7 +1063,7 @@ async function onSatelliteTiltChange(moonName, event) {
   } else {
     tilts[moonName] = val
   }
-  await setSatelliteTilt(selectedPlanet.value.slug, tilts)
+  await setPlanetSatelliteTilt(selectedPlanet.value.slug, tilts)
 }
 
 // ── Orbit events ───────────────────────────────────────────────────────────
@@ -1090,7 +1082,9 @@ const newEventColorAfter = ref('')
 const newEventExistsAfter = ref(true)
 const previewingId = ref(null)
 const creatingEventFor = ref(null)
-const newLinkedEventDraft = reactive({ type: 'instance', title: '', yearStart: '', yearEnd: '' })
+const newLinkedEventDraft = reactive(emptyTimelineDraft())
+const createLinkedEventStatus = ref('idle')
+const createLinkedEventError = ref('')
 
 function resetOrbitEventDraft() {
   newEventHasOrbit.value = false
@@ -1138,11 +1132,24 @@ function triggerSelectValue(id) {
   return timelineEvents.value.find(e => (e.orbit_event_ids ?? []).includes(id))?.slug ?? ''
 }
 
+// The planet a linked-event draft defaults to isn't tracked anywhere else on
+// this panel (selectedSystemSlug is cleared when a planet is selected), so
+// look it up directly from the systems list.
+function systemForPlanet(slug) {
+  return systems.value.find(s => systemPlanetSlugs(s).includes(slug))
+}
+
 async function onTriggerChange(id, event) {
   const value = event.target.value
   if (value === '__new__') {
     creatingEventFor.value = id
-    Object.assign(newLinkedEventDraft, { type: 'instance', title: '', yearStart: '', yearEnd: '' })
+    Object.assign(newLinkedEventDraft, emptyTimelineDraft(), {
+      planetSlug: selectedPlanet.value.slug,
+      systemSlug: systemForPlanet(selectedPlanet.value.slug)?.slug ?? '',
+      orbitEventIds: [id],
+    })
+    createLinkedEventStatus.value = 'idle'
+    createLinkedEventError.value = ''
     return
   }
   const currentlyLinked = timelineEvents.value.filter(e => (e.orbit_event_ids ?? []).includes(id))
@@ -1158,20 +1165,17 @@ async function onTriggerChange(id, event) {
   })
 }
 
-async function createLinkedEvent(id) {
-  if (newLinkedEventDraft.yearStart === '') return
-  await addTimelineEvent({
-    title: newLinkedEventDraft.title.trim(),
-    description: '',
-    event_type: newLinkedEventDraft.type,
-    year_start: Number(newLinkedEventDraft.yearStart),
-    year_end: newLinkedEventDraft.type === 'range' ? Number(newLinkedEventDraft.yearEnd) : null,
-    book_slug: null,
-    planet_slug: selectedPlanet.value.slug,
-    system_slug: null,
-    orbit_event_ids: [id],
-  })
-  creatingEventFor.value = null
+async function createLinkedEvent() {
+  createLinkedEventStatus.value = 'running'
+  createLinkedEventError.value = ''
+  try {
+    await addTimelineEvent(timelineDraftToPatch(newLinkedEventDraft))
+    creatingEventFor.value = null
+    createLinkedEventStatus.value = 'done'
+  } catch (e) {
+    createLinkedEventError.value = `Failed to create event: ${e.message}`
+    createLinkedEventStatus.value = 'error'
+  }
 }
 
 function isPreviewing(id, after) {
@@ -1192,7 +1196,7 @@ function setPreview(id, showAfter) {
 
 async function deleteOrbitEvent(id) {
   const events = (selectedPlanet.value.orbit_events ?? []).filter(e => e.id !== id)
-  await setTimelineEvents(selectedPlanet.value.slug, events)
+  await setPlanetOrbitEvents(selectedPlanet.value.slug, events)
   if (previewingId.value === id) {
     previewingId.value = null
     orbitEventPreview.value = null
@@ -1221,7 +1225,7 @@ async function addOrbitEvent() {
   if (newEventHasColor.value) {
     const after = '#' + newEventColorAfter.value
     const before = '#' + newEventColorBefore.value
-    if (!/^#[0-9a-f]{6}$/i.test(after) || !/^#[0-9a-f]{6}$/i.test(before)) return
+    if (!isValidHexColor(after) || !isValidHexColor(before)) return
     entry.color_before = before
     entry.color_after = after
     hasChange = true
@@ -1234,7 +1238,7 @@ async function addOrbitEvent() {
 
   if (!hasChange) return
   const events = [...(selectedPlanet.value.orbit_events ?? []), entry]
-  await setTimelineEvents(selectedPlanet.value.slug, events)
+  await setPlanetOrbitEvents(selectedPlanet.value.slug, events)
   resetOrbitEventDraft()
 }
 
@@ -1248,13 +1252,7 @@ function onKeyDown(e) {
   }
   if (selectedPlanetSlug.value) {
     const planetSlug = selectedPlanetSlug.value
-    const system = systems.value.find(s =>
-      (s.members ?? []).some(m => {
-        const slug = typeof m === 'string' ? m : m.slug
-        const type = typeof m === 'string' ? 'planet' : m.type
-        return type === 'planet' && slug === planetSlug
-      })
-    )
+    const system = systems.value.find(s => systemPlanetSlugs(s).includes(planetSlug))
     selectedPlanetSlug.value = null
     if (system) {
       selectedSystemSlug.value = system.slug

@@ -1,0 +1,5 @@
+export const PLANETS_COLLECTION = 'planets'
+export const SYSTEMS_COLLECTION = 'planetary_systems'
+export const ENTITIES_COLLECTION = 'entities'
+export const BOOKS_COLLECTION = 'books'
+export const TIMELINE_EVENTS_COLLECTION = 'timeline_events'

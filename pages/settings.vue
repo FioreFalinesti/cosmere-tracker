@@ -27,6 +27,7 @@
         <div class="flex items-center gap-2">
           <button type="button" class="text-xs text-indigo-400 hover:text-blue-100 transition-colors" @click="doResort">Resort by year</button>
           <span v-if="resortStatus === 'done'" class="text-xs text-green-400">Done</span>
+          <span v-else-if="resortStatus === 'error'" class="text-xs text-red-400">{{ resortError }}</span>
         </div>
       </div>
       <div class="space-y-3">
@@ -124,8 +125,8 @@ const { systems, init, cloneSystem } = useSystemSettings()
 const { planets, init: initPlanets } = usePlanetSettings()
 const { books, load: loadBooks } = useCosmere()
 const { entities, init: initEntities } = useEntitySettings()
-const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, computeOrder, resolvedYearStart, resolvedYearEnd } = useTimelineEvents()
-const { timelineNewestFirst, initTimelineOrder, setTimelineNewestFirst } = useMapState()
+const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, resolvedYearStart, resolvedYearEnd, timelineDraftToPatch, emptyTimelineDraft } = useTimelineEvents()
+const { timelineNewestFirst, initTimelineOrder, setTimelineNewestFirst } = useTimelinePrefs()
 await Promise.all([init(), initPlanets(), loadBooks(), initEvents(), initEntities()])
 initTimelineOrder()
 
@@ -177,43 +178,24 @@ function entityName(slug) {
 }
 
 const resortStatus = ref('idle')
+const resortError = ref('')
 async function doResort() {
   resortStatus.value = 'running'
-  await resortByYear()
-  resortStatus.value = 'done'
-}
-
-function emptyDraft() {
-  return {
-    type: 'instance', title: '', description: '',
-    yearMode: 'absolute', yearStart: '', anchorSlug: '', anchorOffset: '',
-    endMode: 'absolute', yearEnd: '', duration: '',
-    bookSlug: '', systemSlug: '', planetSlug: '', zoomScope: 'planet', orbitEventIds: [], entitySlugs: [],
+  resortError.value = ''
+  try {
+    await resortByYear()
+    resortStatus.value = 'done'
+  } catch (e) {
+    resortError.value = `Failed to resort: ${e.message}`
+    resortStatus.value = 'error'
   }
 }
 
 function draftToPatch(draft) {
-  const isUndated = draft.yearMode === 'absolute' && draft.yearStart === ''
-  return {
-    title: draft.title.trim() || (draft.bookSlug ? bookTitle(draft.bookSlug) : ''),
-    description: draft.description.trim(),
-    event_type: draft.type,
-    year_start: draft.yearMode === 'absolute' && draft.yearStart !== '' ? Number(draft.yearStart) : null,
-    year_end: draft.type === 'range' && draft.endMode === 'absolute' ? Number(draft.yearEnd) : null,
-    anchor_slug: draft.yearMode === 'relative' ? draft.anchorSlug : null,
-    anchor_offset: draft.yearMode === 'relative' ? Number(draft.anchorOffset) : null,
-    duration: draft.type === 'range' && draft.endMode === 'duration' ? Number(draft.duration) : null,
-    book_slug: draft.bookSlug || null,
-    planet_slug: draft.planetSlug || null,
-    system_slug: draft.systemSlug || null,
-    zoom_scope: draft.planetSlug && draft.zoomScope === 'system' ? 'system' : null,
-    orbit_event_ids: draft.orbitEventIds ?? [],
-    entity_slugs: draft.entitySlugs ?? [],
-    order: computeOrder(isUndated),
-  }
+  return timelineDraftToPatch(draft, draft.bookSlug ? bookTitle(draft.bookSlug) : '')
 }
 
-const newDraft = reactive(emptyDraft())
+const newDraft = reactive(emptyTimelineDraft())
 const addEventStatus = ref('idle')
 const addEventError = ref('')
 
@@ -222,7 +204,7 @@ async function doAddEvent() {
   addEventError.value = ''
   try {
     await addTimelineEvent(draftToPatch(newDraft))
-    Object.assign(newDraft, emptyDraft())
+    Object.assign(newDraft, emptyTimelineDraft())
     addEventStatus.value = 'done'
   } catch (e) {
     addEventError.value = `Failed to add event: ${e.message}`
@@ -231,7 +213,7 @@ async function doAddEvent() {
 }
 
 const editingSlug = ref(null)
-const editDraft = reactive(emptyDraft())
+const editDraft = reactive(emptyTimelineDraft())
 const editStatus = ref('idle')
 const editError = ref('')
 

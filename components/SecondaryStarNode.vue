@@ -25,22 +25,16 @@
 </template>
 
 <script setup>
+import { blendToWhite } from '~/utils/colorUtils';
+
 const props = defineProps({
   data: { type: Object, required: true },
-})
-
-function blendToWhite(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const m = n => Math.round(n + (255 - n) * amount).toString(16).padStart(2, '0')
-  return `#${m(r)}${m(g)}${m(b)}`
-}
+});
 
 const starStyle = computed(() => {
-  const c = props.data.color ?? '#ff8844'
-  const s = props.data.size ?? 8
-  const mid = blendToWhite(c, 0.7)
+  const c = props.data.color ?? '#ff8844';
+  const s = props.data.size ?? 8;
+  const mid = blendToWhite(c, 0.7);
   return {
     width: `${s}px`,
     height: `${s}px`,
@@ -50,17 +44,17 @@ const starStyle = computed(() => {
     pointerEvents: 'none',
     userSelect: 'none',
     cursor: 'default',
-  }
-})
+  };
+});
 
 const particulateRings = computed(() => {
-  if (!props.data.particulateRing) return []
-  const sr = (props.data.size ?? 8) / 2
-  const r = sr * 2.0
+  if (!props.data.particulateRing) return [];
+  const sr = (props.data.size ?? 8) / 2;
+  const r = sr * 2.0;
   return [
     { r: r * 0.92, opacity: 0.18, width: 14 },
     { r,           opacity: 0.30, width: 22 },
     { r: r * 1.08, opacity: 0.18, width: 14 },
-  ]
-})
+  ];
+});
 </script>

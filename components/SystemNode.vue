@@ -18,19 +18,6 @@
           </filter>
         </defs>
 
-        <!-- Binary: secondary star orbit ring (star itself is a separate animated node) -->
-        <circle
-          v-if="data.isBinary"
-          :cx="data.size / 2"
-          :cy="data.size / 2"
-          :r="secondaryOrbitR"
-          :stroke="data.secondaryStarColor ?? '#ff8844'"
-          stroke-opacity="0.28"
-          stroke-width="0.75"
-          stroke-dasharray="4 4"
-          fill="none"
-        />
-
         <!-- Primary star particulate ring — blurred filled rings like the anomaly cloud -->
         <g v-if="starParticulateRings.length" filter="url(#spr-blur)">
           <circle
@@ -126,12 +113,7 @@
         :style="{ left: `${badge.x}px`, top: `${badge.y}px` }"
       >
         <RemnantBlob v-if="badge.kind === 'remnant'" :size="28" :color="badge.color" />
-        <svg v-else :viewBox="SHARD_ICON_VIEWBOX" class="shard-badge-icon">
-          <path :d="SHARD_BG_PATH" :fill="badge.color" :stroke="badge.color" stroke-width="1" />
-          <g transform="translate(0,152) scale(0.1,-0.1)" :fill="darkenHex(badge.color)">
-            <path :d="SHARD_ICON_PATH" />
-          </g>
-        </svg>
+        <ShardIcon v-else :color="badge.color" :size="16" />
         <span class="shard-badge-label" :style="{ color: badgeLabelColor }">{{ badge.name }}</span>
       </div>
     </div>
@@ -143,19 +125,17 @@
 </template>
 
 <script setup>
-import { darkenHex, contrastGrey } from "~/utils/colorUtils";
-import { SHARD_ICON_VIEWBOX, SHARD_BG_PATH, SHARD_ICON_PATH } from "~/utils/shardIcon";
+import { contrastGrey, blendToWhite } from "~/utils/colorUtils";
+import { bodyVisualSize } from "~/utils/bodyVisuals";
+import { clusterBadgePositions } from "~/utils/badgeCluster";
 
 const props = defineProps({
   data: { type: Object, required: true },
-  selected: { type: Boolean, default: false },
 });
 
-const sunSize = computed(() => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64));
+const sunSize = computed(() => bodyVisualSize(props.data.starSize));
 
-const orbitInnerR = computed(
-  () => Math.floor(Math.max(0.1, props.data.starSize ?? 1) * 64) / 2 + 20,
-);
+const orbitInnerR = computed(() => sunSize.value / 2 + 20);
 
 const starParticulateRings = computed(() => {
   if (!props.data.starParticulateRing) return [];
@@ -172,10 +152,6 @@ const autoOuterR = computed(() => {
   const n = (props.data.memberTypes ?? []).length;
   return orbitInnerR.value + Math.max(80, n * 55);
 });
-
-const secondaryOrbitR = computed(() =>
-  props.data.isBinary ? (props.data.secondaryStarOrbitDist ?? 0) : 0,
-);
 
 // 5 rings for comet belt — light blues, r-10 to r+10, widely spaced dots
 const cometRings = [
@@ -242,40 +218,19 @@ const circleStyle = computed(() => ({
   ].join(", "),
 }));
 
-function blendToWhite(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const m = (n) =>
-    Math.round(n + (255 - n) * amount)
-      .toString(16)
-      .padStart(2, "0");
-  return `#${m(r)}${m(g)}${m(b)}`;
-}
-
 // Shards without a specific planet are "in the system generally" — cluster
 // their badges directly over the star rather than ringing the whole system,
 // so it reads as "sitting at the star" and not "orbiting way out at the edge".
 // Badges cluster over the star, so pick a grey that reads against its color.
 const badgeLabelColor = computed(() => contrastGrey(props.data.starColor ?? "#ffcc44"));
 
-const shardBadges = computed(() => {
-  const shards = props.data.shardsHere ?? [];
-  const n = shards.length;
-  if (n === 0) return [];
-  const center = props.data.size / 2;
-  // Radius grows with badge count too, not just the star's size — otherwise
-  // a heavily-populated star crams every badge into the same tiny ring.
-  const clusterRadius = n > 1 ? Math.max(10, (sunSize.value / 2) * 0.6, n * 3) : 0;
-  return shards.map((shard, i) => {
-    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-    return {
-      ...shard,
-      x: center + clusterRadius * Math.cos(angle),
-      y: center + clusterRadius * Math.sin(angle),
-    };
-  });
-});
+const shardBadges = computed(() =>
+  clusterBadgePositions(props.data.shardsHere ?? [], props.data.size / 2, sunSize.value / 2, {
+    minRadius: 10,
+    sizeFactor: 0.6,
+    perItemRadius: 3,
+  }),
+);
 
 const sunStyle = computed(() => {
   const c = props.data.starColor ?? "#ffcc44";
@@ -327,12 +282,6 @@ const sunStyle = computed(() => {
 .shard-badge {
   position: absolute;
   transform: translate(-50%, -50%);
-}
-
-.shard-badge-icon {
-  height: 16px;
-  width: auto;
-  display: block;
 }
 
 .shard-badge-label {

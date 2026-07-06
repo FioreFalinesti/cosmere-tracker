@@ -44,16 +44,18 @@
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { averageHexColors } from '~/utils/colorUtils'
-import { resolveOrbitDistance, resolveExists, resolveLocation, resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/orbitUtils'
+import { resolveOrbitDistance, resolveExists, resolveLocation, resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
 import { getMoonOrbitType, getSatelliteType } from '~/utils/satelliteUtils'
+import { memberSlug, memberType, systemMembers, systemPlanetSlugs } from '~/utils/systemMembers'
+import { bodyVisualSize } from '~/utils/bodyVisuals'
 
 definePageMeta({ layout: 'map' })
 
-const { books, load } = useCosmere()
+const { load } = useCosmere()
 const { planets, init: initPlanets, nodeData, computeOrbitRadii } = usePlanetSettings()
 const { systems, init: initSystems } = useSystemSettings()
 const { entities, init: initEntities } = useEntitySettings()
-const { editPositions, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
+const { editPositions, zoomTarget, orbitEventPreview } = useMapState()
 const { init: initEvents, currentEvent } = useTimelineEvents()
 
 await load()
@@ -76,7 +78,7 @@ watch(currentEvent, ev => {
 }, { immediate: true })
 
 function planetSize(p) {
-  return Math.floor(Math.max(0.1, p.size_multiplier ?? 1) * 64)
+  return bodyVisualSize(p.size_multiplier)
 }
 
 // Most systems/planets are pre-existing astronomical fixtures and are shown
@@ -114,17 +116,17 @@ const visibleNodes = computed(() => {
   const planetNodes = []
 
   for (const system of systems.value) {
-    const planetSlugs = (system.members ?? system.planets ?? []).filter(m => typeof m === 'string' ? true : m.type === 'planet').map(m => typeof m === 'string' ? m : m.slug)
+    const planetSlugs = systemPlanetSlugs(system)
     const allMembers = planetSlugs.map(slug => planets.value.find(p => p.slug === slug)).filter(Boolean)
     if (allMembers.length === 0 || !isVisible(system, 'existence_events')) continue
 
     const inhabitedMembers = allMembers.filter(p => p.uninhabited !== true)
     const color = averageHexColors((inhabitedMembers.length ? inhabitedMembers : allMembers).map(p => p.color))
 
-    const systemMemberList = system.members ?? system.planets ?? []
+    const systemMemberList = systemMembers(system)
 
     // innerR based purely on star visual size — no dependency on system size
-    const starVisualR = Math.floor(Math.max(0.1, system.star_size ?? 1) * 64) / 2
+    const starVisualR = bodyVisualSize(system.star_size) / 2
     const innerR = Math.round(starVisualR) + 20
 
     // autoOuterR: default orbit range for auto-spaced members
@@ -133,12 +135,12 @@ const visibleNodes = computed(() => {
     // Collect max manual orbit distance across all members
     let maxManualDist = 0
     systemMemberList.forEach(member => {
-      const mType = typeof member === 'string' ? 'planet' : member.type
+      const mType = memberType(member)
       if (mType !== 'planet') {
         if (typeof member === 'object' && member.orbit_distance != null)
           maxManualDist = Math.max(maxManualDist, member.orbit_distance)
       } else {
-        const mSlug = typeof member === 'string' ? member : member.slug
+        const mSlug = memberSlug(member)
         const planet = planets.value.find(p => p.slug === mSlug)
         if (planet?.orbit_distance != null)
           maxManualDist = Math.max(maxManualDist, planet.orbit_distance)
@@ -154,7 +156,7 @@ const visibleNodes = computed(() => {
     const angle = -Math.PI / 2  // 12 o'clock
 
     // Binary star support — derived from star-type members
-    const starMemberIdx = systemMemberList.findIndex(m => typeof m === 'object' && m.type === 'star')
+    const starMemberIdx = systemMemberList.findIndex(m => memberType(m) === 'star')
     const isBinary = starMemberIdx !== -1
     // secondaryOrbitR resolved after memberOrbitDistances is computed (see below)
     let secondaryOrbitR = 0
@@ -188,8 +190,8 @@ const visibleNodes = computed(() => {
     // Resolve final orbit distance for each member (manual overrides auto)
     const memberOrbitDistances = autoOrbitRadii.map((defaultR, i) => {
       const member = systemMemberList[i]
-      const mType = typeof member === 'string' ? 'planet' : member.type
-      const mSlug = typeof member === 'string' ? member : member.slug
+      const mType = memberType(member)
+      const mSlug = memberSlug(member)
       if (mType !== 'planet' || memberLagrangePoints[i]) {
         if (typeof member === 'object' && member.orbit_distance != null) return member.orbit_distance
         return defaultR
@@ -209,9 +211,9 @@ const visibleNodes = computed(() => {
     // types (stars, belts, anomalies) have no exists_from_start/orbit_events
     // gating of their own, so they're always considered visible here.
     const memberVisible = systemMemberList.map((member, i) => {
-      const mType = typeof member === 'string' ? 'planet' : member.type
+      const mType = memberType(member)
       if (mType !== 'planet') return true
-      const mSlug = typeof member === 'string' ? member : member.slug
+      const mSlug = memberSlug(member)
       const planet = planets.value.find(p => p.slug === mSlug)
       return planet ? isVisible(planet, 'orbit_events') : false
     })
@@ -228,14 +230,12 @@ const visibleNodes = computed(() => {
         starColor: system.star_color ?? '#ffcc44',
         starSize: system.star_size ?? 1,
         starParticulateRing: system.star_particulate_ring ?? false,
-        isBinary,
-        secondaryStarOrbitDist: isBinary ? memberOrbitDistances[starMemberIdx] ?? 0 : 0,
         secondaryStarColor: isBinary ? (systemMemberList[starMemberIdx]?.color ?? '#ff8844') : '#ff8844',
         color,
         size,
         slug: system.slug,
         planetCount: allMembers.length,
-        memberTypes: systemMemberList.map(m => typeof m === 'string' ? 'planet' : m.type),
+        memberTypes: systemMemberList.map(memberType),
         memberOrbitDistances,
         memberLagrangePoints,
         memberVisible,
@@ -245,7 +245,7 @@ const visibleNodes = computed(() => {
 
     // Secondary star nodes — one per star-type member
     systemMemberList.forEach((member, i) => {
-      if (typeof member !== 'object' || member.type !== 'star') return
+      if (memberType(member) !== 'star') return
       const starColor = member.color ?? '#ff8844'
       const sizeMultiplier = member.size ?? 0.5
       const ssRadius = Math.max(3, Math.round(starVisualR * sizeMultiplier))
@@ -271,8 +271,8 @@ const visibleNodes = computed(() => {
     // For each member, collect ALL possible orbit radii (default + every orbit_event
     // override). Lagrange members use only their fixed radius (no event overrides).
     const allPossibleOrbitR = systemMemberList.map((member, i) => {
-      const type = typeof member === 'string' ? 'planet' : member.type
-      const slug = typeof member === 'string' ? member : member.slug
+      const type = memberType(member)
+      const slug = memberSlug(member)
       const defaultR = autoOrbitRadii[i]
       if (type !== 'planet') return [memberOrbitDistances[i]]
       if (memberLagrangePoints[i]) return [memberOrbitDistances[i]]
@@ -288,7 +288,7 @@ const visibleNodes = computed(() => {
     const planetOrbitList = []
     const memberToPlanetIdx = new Map()
     systemMemberList.forEach((member, i) => {
-      const type = typeof member === 'string' ? 'planet' : member.type
+      const type = memberType(member)
       if (type !== 'planet') return
       if (memberLagrangePoints[i]) return
       memberToPlanetIdx.set(i, planetOrbitList.length)
@@ -296,9 +296,9 @@ const visibleNodes = computed(() => {
     })
 
     systemMemberList.forEach((member, i) => {
-      const memberType = typeof member === 'string' ? 'planet' : member.type
-      const slug = typeof member === 'string' ? member : member.slug
-      if (memberType === 'anomaly') {
+      const mType = memberType(member)
+      const slug = memberSlug(member)
+      if (mType === 'anomaly') {
         const orbitR = memberOrbitDistances[i]
         const anomalySize = member.size ?? 60
         planetNodes.push({
@@ -309,11 +309,11 @@ const visibleNodes = computed(() => {
             x: sysCX + orbitR * Math.cos(angle) - anomalySize / 2,
             y: sysCY + orbitR * Math.sin(angle) - anomalySize / 2,
           },
-          data: { size: anomalySize, color: member.color ?? '#bb88ff', systemSlug: system.slug, orbitDist: orbitR },
+          data: { size: anomalySize, color: member.color ?? '#bb88ff', systemSlug: system.slug, memberIndex: i, orbitDist: orbitR },
         })
         return
       }
-      if (memberType !== 'planet') return
+      if (mType !== 'planet') return
       const planet = planets.value.find(p => p.slug === slug)
       if (!planet) return
       if (!isVisible(planet, 'orbit_events')) return

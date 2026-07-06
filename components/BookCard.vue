@@ -17,7 +17,7 @@
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   book: { type: Object, required: true },
   characterCount: { type: Number, required: true },
 })

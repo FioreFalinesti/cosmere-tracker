@@ -20,8 +20,8 @@
     <div class="flex items-center gap-4 mb-6">
       <p class="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest">Filters</p>
       <label class="flex items-center gap-2 text-sm text-indigo-300 cursor-pointer">
-        <input type="checkbox" v-model="filters.shardsOnly" class="accent-accent-600" />
-        Shards
+        <input type="checkbox" v-model="filters.shardholdersOnly" class="accent-accent-600" />
+        Shardholders
       </label>
     </div>
 
@@ -65,18 +65,14 @@
 
 <script setup>
 import Fuse from 'fuse.js'
-import { resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/orbitUtils'
+import { resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
 
 const { characters, books, appearances, load } = useCosmere()
-const { events: timelineEvents, init: initEvents, isReached } = useTimelineEvents()
+const { init: initEvents, isReached, isBookReached } = useTimelineEvents()
 const { entities, init: initEntities } = useEntitySettings()
 await load()
 await initEvents()
 await initEntities()
-
-function isBookReached(bookSlug) {
-  return timelineEvents.value.some(ev => ev.book_slug === bookSlug && isReached(ev))
-}
 
 // A character is revealed once the timeline has reached any book they
 // appear in — avoids spoiling that a character exists before we've gotten
@@ -107,10 +103,10 @@ function isCurrentVessel(c) {
   return !TERMINAL_SHARD_STATUSES.includes(status)
 }
 
-const filters = reactive({ shardsOnly: false })
+const filters = reactive({ shardholdersOnly: false })
 
 const filteredCharacters = computed(() =>
-  filters.shardsOnly ? revealedCharacters.value.filter(isCurrentVessel) : revealedCharacters.value
+  filters.shardholdersOnly ? revealedCharacters.value.filter(isCurrentVessel) : revealedCharacters.value
 )
 
 const query = ref('')

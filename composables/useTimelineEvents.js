@@ -1,9 +1,7 @@
 import { ref, computed } from 'vue'
-import { collection, query, orderBy, doc, addDoc, updateDoc, deleteDoc, getDocs, onSnapshot } from 'firebase/firestore'
+import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 
-const events = ref([])
-const initialized = ref(false)
-let unsubscribe = null
+const { items: events, init } = firestoreCollectionLoader(TIMELINE_EVENTS_COLLECTION)
 
 const CURRENT_EVENT_KEY = 'cosmere-tracker:current-event'
 const currentEventSlug = ref(null)
@@ -54,7 +52,7 @@ const resolvedYears = computed(() => {
 // year_start may be null for undated instance events, or for events dated
 // via anchor_slug/anchor_offset instead of a literal year. Exported as a
 // plain top-level function (not just via the useTimelineEvents() factory)
-// so non-component hot-path code (utils/orbitUtils.js) can import it
+// so non-component hot-path code (utils/timelineFieldResolvers.js) can import it
 // directly without allocating a whole composable instance per call.
 export function eventYear(ev) {
   return resolvedYears.value.get(ev.slug)?.effective ?? null
@@ -84,6 +82,41 @@ function computeOrder(isUndated) {
     : null
 }
 
+// Maps a TimelineEventForm draft to the Firestore patch shape. Shared by
+// every place that submits the form (Settings' full editor, InfoPanel's
+// quick-create for linking an orbit-event trigger) so they can't drift apart
+// as fields are added — a quick-create that skipped a field here would
+// silently lose anchored dating, entity tags, etc.
+export function timelineDraftToPatch(draft, fallbackTitle = '') {
+  const isUndated = draft.yearMode === 'absolute' && draft.yearStart === ''
+  return {
+    title: draft.title.trim() || fallbackTitle,
+    description: (draft.description ?? '').trim(),
+    event_type: draft.type,
+    year_start: draft.yearMode === 'absolute' && draft.yearStart !== '' ? Number(draft.yearStart) : null,
+    year_end: draft.type === 'range' && draft.endMode === 'absolute' ? Number(draft.yearEnd) : null,
+    anchor_slug: draft.yearMode === 'relative' ? draft.anchorSlug : null,
+    anchor_offset: draft.yearMode === 'relative' ? Number(draft.anchorOffset) : null,
+    duration: draft.type === 'range' && draft.endMode === 'duration' ? Number(draft.duration) : null,
+    book_slug: draft.bookSlug || null,
+    planet_slug: draft.planetSlug || null,
+    system_slug: draft.systemSlug || null,
+    zoom_scope: draft.planetSlug && draft.zoomScope === 'system' ? 'system' : null,
+    orbit_event_ids: draft.orbitEventIds ?? [],
+    entity_slugs: draft.entitySlugs ?? [],
+    order: computeOrder(isUndated),
+  }
+}
+
+function emptyTimelineDraft() {
+  return {
+    type: 'instance', title: '', description: '',
+    yearMode: 'absolute', yearStart: '', anchorSlug: '', anchorOffset: '',
+    endMode: 'absolute', yearEnd: '', duration: '',
+    bookSlug: '', systemSlug: '', planetSlug: '', zoomScope: 'planet', orbitEventIds: [], entitySlugs: [],
+  }
+}
+
 const orderedEvents = computed(() => [...events.value].sort((a, b) => effectiveOrder(a) - effectiveOrder(b)))
 
 // "Latest" for the scrubber default is chronological, independent of manual
@@ -97,28 +130,6 @@ const currentEvent = computed(() =>
   sortedByYear.value[sortedByYear.value.length - 1] ||
   null
 )
-
-// When the selected/latest current event is itself undated, falling back to
-// Infinity would reveal every system/orbit-event that has ANY dated entry at
-// all, no matter how far in the future — e.g. selecting an undated "some time
-// after the Shattering" milestone would immediately spoil a system that only
-// unlocks 9000 years later. Instead, walk backward through the display order
-// to the nearest preceding dated event and use its year — "as far as we've
-// read up to this point" — falling back to -Infinity (nothing revealed) only
-// if there's no dated event before it at all.
-const nowYear = computed(() => {
-  if (!currentEvent.value) return -Infinity
-  const year = eventYear(currentEvent.value)
-  if (year != null) return year
-
-  const list = orderedEvents.value
-  const idx = list.findIndex(e => e.slug === currentEvent.value.slug)
-  for (let i = idx - 1; i >= 0; i--) {
-    const precedingYear = eventYear(list[i])
-    if (precedingYear != null) return precedingYear
-  }
-  return -Infinity
-})
 
 const currentIndex = computed(() => {
   if (!currentEvent.value) return -1
@@ -142,6 +153,13 @@ export function isReached(ev) {
 // `orbit_event_ids` link field on timeline events with no collision risk.
 export function isEventTriggerReached(triggerId) {
   return events.value.some(ev => (ev.orbit_event_ids ?? []).includes(triggerId) && isReached(ev))
+}
+
+// A book is "reached" once the timeline has revealed the event tied to it —
+// used to gate book/character spoilers the same way isEventTriggerReached
+// gates orbit/color changes.
+export function isBookReached(bookSlug) {
+  return events.value.some(ev => ev.book_slug === bookSlug && isReached(ev))
 }
 
 export function useTimelineEvents() {
@@ -172,23 +190,6 @@ export function useTimelineEvents() {
     else if (ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
   }
 
-  async function init() {
-    if (initialized.value) return
-    const db = useFirestore()
-
-    const snap = await getDocs(collection(db, 'timeline_events'))
-    events.value = snap.docs.map(d => ({ slug: d.id, ...d.data() }))
-    initialized.value = true
-
-    // Real-time updates after initial load
-    unsubscribe = onSnapshot(
-      collection(db, 'timeline_events'),
-      (snap) => { events.value = snap.docs.map(d => ({ slug: d.id, ...d.data() })) },
-      (err) => console.error('[timeline_events snapshot]', err)
-    )
-    if (typeof window !== 'undefined') window.addEventListener('beforeunload', () => unsubscribe?.())
-  }
-
   async function addTimelineEvent({ title, description, event_type, year_start, year_end, anchor_slug, anchor_offset, duration, book_slug, planet_slug, system_slug, orbit_event_ids, entity_slugs, zoom_scope }) {
     const db = useFirestore()
     const isUndated = year_start == null && !anchor_slug
@@ -209,7 +210,7 @@ export function useTimelineEvents() {
       orbit_event_ids: orbit_event_ids ?? [],
       entity_slugs: entity_slugs ?? [],
     }
-    const docRef = await addDoc(collection(db, 'timeline_events'), data)
+    const docRef = await addDoc(collection(db, TIMELINE_EVENTS_COLLECTION), data)
     if (!events.value.some(e => e.slug === docRef.id)) {
       events.value = [...events.value, { slug: docRef.id, ...data }]
     }
@@ -219,13 +220,13 @@ export function useTimelineEvents() {
     const event = events.value.find(e => e.slug === slug)
     if (event) Object.assign(event, patch)
     const db = useFirestore()
-    await updateDoc(doc(db, 'timeline_events', slug), patch)
+    await updateDoc(doc(db, TIMELINE_EVENTS_COLLECTION, slug), patch)
   }
 
   async function deleteTimelineEvent(slug) {
     events.value = events.value.filter(e => e.slug !== slug)
     const db = useFirestore()
-    await deleteDoc(doc(db, 'timeline_events', slug))
+    await deleteDoc(doc(db, TIMELINE_EVENTS_COLLECTION, slug))
   }
 
   // Moves an event one slot up (-1) or down (+1) in the displayed order and
@@ -250,7 +251,8 @@ export function useTimelineEvents() {
 
   return {
     events, init, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, computeOrder,
-    orderedEvents, sortedByYear, currentEvent, currentEventSlug, nowYear, eventYear, resolvedYearStart, resolvedYearEnd,
-    isReached, isEventTriggerReached, initCurrentEvent, setCurrentEvent,
+    orderedEvents, sortedByYear, currentEvent, currentEventSlug, eventYear, resolvedYearStart, resolvedYearEnd,
+    isReached, isEventTriggerReached, isBookReached, initCurrentEvent, setCurrentEvent,
+    timelineDraftToPatch, emptyTimelineDraft,
   }
 }

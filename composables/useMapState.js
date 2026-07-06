@@ -1,3 +1,7 @@
+// AppSidebar's expanded width — also used by MapSync to compute the map's
+// available viewport width for centering/framing, so the two can't drift.
+export const SIDEBAR_WIDTH = 480
+
 const polarOrbitAngles = reactive({}) // { [planetSlug]: perpAngle } — updated each animation frame
 
 const editPositions = ref(false)
@@ -8,10 +12,6 @@ const selectedSystemSlug = ref(null)
 const selectedBodyMemberIndex = ref(null)
 const zoomTarget = ref(null) // { type: 'planet'|'system', slug }
 const orbitEventPreview = ref(null) // { planetSlug, orbit: {before,after}|null, color: {before,after}|null, showAfter } | null — live before/after preview while editing an orbit event
-
-const TIMELINE_NEWEST_FIRST_KEY = 'cosmere-tracker:timeline-newest-first'
-const timelineNewestFirst = ref(false)
-let timelineOrderInitialized = false
 
 export function useMapState() {
   function startEdit() {
@@ -29,20 +29,5 @@ export function useMapState() {
     editPositions.value = false
   }
 
-  function initTimelineOrder() {
-    if (timelineOrderInitialized) return
-    try {
-      timelineNewestFirst.value = localStorage.getItem(TIMELINE_NEWEST_FIRST_KEY) === 'true'
-    } catch {
-      timelineNewestFirst.value = false
-    }
-    timelineOrderInitialized = true
-  }
-
-  function setTimelineNewestFirst(value) {
-    timelineNewestFirst.value = value
-    localStorage.setItem(TIMELINE_NEWEST_FIRST_KEY, String(value))
-  }
-
-  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, polarOrbitAngles, timelineNewestFirst, orbitEventPreview, startEdit, saveEdit, cancelEdit, initTimelineOrder, setTimelineNewestFirst }
+  return { editPositions, editCancelled, viewingSystem, selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, polarOrbitAngles, orbitEventPreview, startEdit, saveEdit, cancelEdit }
 }

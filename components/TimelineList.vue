@@ -26,21 +26,22 @@
       >
         <template v-if="ev.event_type === 'range'">
           <span
-            class="absolute w-1.5 rounded-full"
+            class="absolute rounded-full"
             :class="isReached(ev) ? 'bg-accent-500/40' : 'bg-surface-700'"
             :style="rangeBarStyle(ev)"
           />
           <span
-            class="absolute w-1.5 h-1.5 rounded-full border-2 bg-surface-900"
+            class="absolute rounded-full border-2 bg-surface-900"
             :class="isReached(ev) ? 'border-accent-500' : 'border-surface-600'"
             :style="rangeStartCapStyle(ev)"
           />
           <span
-            class="absolute -left-[15px] top-1.5 w-2 h-2 rounded-full transition-all"
+            class="absolute rounded-full transition-all"
             :class="[
               isCurrent(ev) ? 'ring-2 ring-accent-300 ring-offset-2 ring-offset-surface-900' : '',
               isReached(ev) ? 'bg-accent-500' : 'bg-surface-600',
             ]"
+            :style="markerDotStyle"
           />
           <!-- Range events show their text to the LEFT of the spine, vertically
                centered across the full span the bar covers — the row's own
@@ -68,11 +69,12 @@
         </template>
         <template v-else>
           <span
-            class="absolute -left-[15px] top-1.5 w-2 h-2 rounded-full transition-all"
+            class="absolute rounded-full transition-all"
             :class="[
               isCurrent(ev) ? 'ring-2 ring-accent-300 ring-offset-2 ring-offset-surface-900' : '',
               isReached(ev) ? 'bg-accent-500' : 'bg-surface-600',
             ]"
+            :style="markerDotStyle"
           />
           <div class="flex items-baseline gap-2">
             <span class="text-xs font-mono text-indigo-400 shrink-0 group-hover:text-accent-300 transition-colors">
@@ -99,7 +101,7 @@
 
 <script setup>
 const { orderedEvents, init: initEvents, currentEvent, eventYear, resolvedYearStart, resolvedYearEnd, isReached, initCurrentEvent, setCurrentEvent } = useTimelineEvents()
-const { timelineNewestFirst } = useMapState()
+const { timelineNewestFirst } = useTimelinePrefs()
 const { entities, init: initEntities } = useEntitySettings()
 
 await initEvents()
@@ -175,13 +177,18 @@ function rangeBarHeight(ev) {
 function rangeBarStyle(ev) {
   const height = rangeBarHeight(ev)
   const top = timelineNewestFirst.value ? MARKER_TOP : MARKER_TOP - height
-  return { left: `${RANGE_MARKER_LEFT}px`, top: `${top}px`, height: `${height}px` }
+  return { left: `${RANGE_MARKER_LEFT}px`, top: `${top}px`, width: `${RANGE_BAR_WIDTH}px`, height: `${height}px` }
 }
 function rangeStartCapStyle(ev) {
   const height = rangeBarHeight(ev)
   const top = timelineNewestFirst.value ? MARKER_TOP + height : MARKER_TOP - height
-  return { left: `${RANGE_MARKER_LEFT}px`, top: `${top}px` }
+  return { left: `${RANGE_MARKER_LEFT}px`, top: `${top}px`, width: `${RANGE_BAR_WIDTH}px`, height: `${RANGE_BAR_WIDTH}px` }
 }
+
+// Shared position/size for both the range-end and instant-event markers —
+// keeps the visual dot in lockstep with MARKER_OFFSET/DOT_SIZE/MARKER_TOP,
+// which SPINE_LEFT/DOT_CENTER are derived from below.
+const markerDotStyle = { left: `-${MARKER_OFFSET}px`, top: `${MARKER_TOP}px`, width: `${DOT_SIZE}px`, height: `${DOT_SIZE}px` }
 
 // The full bounding box of the bar + its end dot, used to vertically center
 // the range's text across its whole visual span rather than just this row's

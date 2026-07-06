@@ -249,12 +249,7 @@
           <template v-else>
             <div class="flex items-center justify-between gap-2 mb-1">
               <div class="flex items-center gap-2 min-w-0">
-                <svg v-if="entity.type === 'shard' && entity.color" :viewBox="SHARD_ICON_VIEWBOX" class="h-[35px] w-auto shrink-0">
-                  <path :d="SHARD_BG_PATH" :fill="entity.color" :stroke="entity.color" stroke-width="1" />
-                  <g transform="translate(0,152) scale(0.1,-0.1)" :fill="darkenHex(entity.color)">
-                    <path :d="SHARD_ICON_PATH" />
-                  </g>
-                </svg>
+                <ShardIcon v-if="entity.type === 'shard' && entity.color" :color="entity.color" :size="35" class="shrink-0" />
                 <span
                   v-else
                   class="w-3 h-3 rounded-full shrink-0"
@@ -300,9 +295,8 @@
 </template>
 
 <script setup>
-import { resolveStatus } from "~/utils/orbitUtils";
-import { darkenHex } from "~/utils/colorUtils";
-import { SHARD_ICON_VIEWBOX, SHARD_BG_PATH, SHARD_ICON_PATH } from "~/utils/shardIcon";
+import { resolveStatus } from "~/utils/timelineFieldResolvers";
+import { isValidHexColor } from "~/utils/colorUtils";
 
 const {
   entities,
@@ -363,7 +357,7 @@ function systemName(slug) {
 
 function onColorChange(entity, hex) {
   const normalized = "#" + hex.replace("#", "");
-  if (!/^#[0-9a-f]{6}$/i.test(normalized)) return;
+  if (!isValidHexColor(normalized)) return;
   setEntityColor(entity.slug, normalized);
 }
 

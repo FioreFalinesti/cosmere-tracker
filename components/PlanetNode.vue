@@ -1,5 +1,5 @@
 <template>
-  <div class="planet-node" @click="handleClick">
+  <div class="planet-node">
     <div class="planet-wrap" :style="{ width: `${data.size}px`, height: `${data.size}px` }">
       <!-- Saturn rings — back half (rendered before planet so orb covers the middle) -->
       <svg
@@ -227,12 +227,7 @@
         :style="{ left: `${badge.x}px`, top: `${badge.y}px` }"
       >
         <RemnantBlob v-if="badge.kind === 'remnant'" :size="28" :color="badge.color" />
-        <svg v-else :viewBox="SHARD_ICON_VIEWBOX" class="shard-badge-icon">
-          <path :d="SHARD_BG_PATH" :fill="badge.color" :stroke="badge.color" stroke-width="1" />
-          <g transform="translate(0,152) scale(0.1,-0.1)" :fill="darkenHex(badge.color)">
-            <path :d="SHARD_ICON_PATH" />
-          </g>
-        </svg>
+        <ShardIcon v-else :color="badge.color" :size="16" />
         <span class="shard-badge-label" :style="{ color: labelColor(badge) }">
           {{ badge.name }}
         </span>
@@ -242,28 +237,20 @@
 </template>
 
 <script setup>
-import { darkenHex, contrastGrey } from "~/utils/colorUtils";
-import { SHARD_ICON_VIEWBOX, SHARD_BG_PATH, SHARD_ICON_PATH } from "~/utils/shardIcon";
+import { darkenHex, contrastGrey, desaturateHex, adjustHex, blendToBlue } from "~/utils/colorUtils";
+import { clusterBadgePositions } from "~/utils/badgeCluster";
 
 const props = defineProps({
   id: { type: String, required: true },
   data: { type: Object, required: true },
-  selected: { type: Boolean, default: false },
 });
 
-const { viewingSystem, selectedPlanetSlug, selectedSystemSlug, zoomTarget, polarOrbitAngles } =
-  useMapState();
+const { viewingSystem, polarOrbitAngles } = useMapState();
 
 const polarLineDir = computed(() => {
   const a = polarOrbitAngles[props.id] ?? -Math.PI / 2;
   return { cos: Math.cos(a), sin: Math.sin(a) };
 });
-
-function handleClick() {
-  selectedPlanetSlug.value = props.id;
-  selectedSystemSlug.value = null;
-  zoomTarget.value = { type: "planet", slug: props.id };
-}
 
 const showName = computed(() => viewingSystem.value === props.data.systemSlug);
 
@@ -273,24 +260,16 @@ const cx = computed(() => props.data.size / 2);
 const cy = computed(() => props.data.size / 2);
 
 // Cluster Shard badges directly over the planet's disc, scaled to its size.
-const shardBadges = computed(() => {
-  const shards = props.data.shardsHere ?? [];
-  const n = shards.length;
-  if (n === 0) return [];
-  const center = props.data.size / 2;
-  // Radius grows with badge count too, not just planet size — otherwise a
-  // heavily-populated body (e.g. all 16 Shards on Yolen right after the
-  // Shattering) crams every badge into the same tiny ring and they overlap.
-  const clusterRadius = n > 1 ? Math.max(8, center * 0.5, n * 2.3) : 0;
-  return shards.map((shard, i) => {
-    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-    return {
-      ...shard,
-      x: center + clusterRadius * Math.cos(angle),
-      y: center + clusterRadius * Math.sin(angle),
-    };
-  });
-});
+// Radius grows with badge count too, not just planet size — otherwise a
+// heavily-populated body (e.g. all 16 Shards on Yolen right after the
+// Shattering) crams every badge into the same tiny ring and they overlap.
+const shardBadges = computed(() =>
+  clusterBadgePositions(props.data.shardsHere ?? [], props.data.size / 2, props.data.size / 2, {
+    minRadius: 8,
+    sizeFactor: 0.5,
+    perItemRadius: 2.3,
+  }),
+);
 
 const textArcPath = computed(() => {
   const r = props.data.size / 2 + 1;
@@ -306,18 +285,6 @@ const fontSize = computed(() => {
 });
 
 // ── Planet orb color ─────────────────────────────────────────────────────────
-
-function desaturateHex(hex, amount = 0.65) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-  const h = (n) =>
-    Math.round(n + (gray - n) * amount)
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
 
 const orbColor = computed(() =>
   props.data.uninhabited ? desaturateHex(props.data.color) : props.data.color,
@@ -351,20 +318,6 @@ const rings = computed(() => {
 });
 
 // ── Gas giant bands ───────────────────────────────────────────────────────────
-
-function adjustHex(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const h = (n) =>
-    Math.min(
-      255,
-      Math.max(0, amount > 0 ? Math.round(n + (255 - n) * amount) : Math.round(n * (1 + amount))),
-    )
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
 
 const gasGiant = computed(() => {
   if (!props.data.isGasGiant) return { angle: 0, bands: [] };
@@ -403,19 +356,6 @@ const gasGiant = computed(() => {
 });
 
 // ── Dwarf planet rocky/icy texture ────────────────────────────────────────────
-
-// Blend a hex color toward a cold blue target by `amount` (0–1)
-const COLD_BLUE = { r: 110, g: 160, b: 220 };
-function blendToBlue(hex, amount) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const h = (n, target) =>
-    Math.round(n + (target - n) * amount)
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r, COLD_BLUE.r)}${h(g, COLD_BLUE.g)}${h(b, COLD_BLUE.b)}`;
-}
 
 const dwarfPlanet = computed(() => {
   if (!props.data.isDwarfPlanet)
@@ -492,12 +432,6 @@ const dwarfPlanet = computed(() => {
 .shard-badge {
   position: absolute;
   transform: translate(-50%, -50%);
-}
-
-.shard-badge-icon {
-  height: 16px;
-  width: auto;
-  display: block;
 }
 
 .shard-badge-label {

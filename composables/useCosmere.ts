@@ -1,5 +1,4 @@
 import type { Ref } from 'vue'
-import { collection, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore'
 
 export interface Book {
   slug: string
@@ -28,40 +27,23 @@ interface CosmereStore {
   books: Ref<Book[]>
   characters: Ref<Character[]>
   appearances: Ref<Appearance[]>
-  loaded: Ref<boolean>
+  initialized: Ref<boolean>
   load: () => Promise<void>
 }
 
-const books = ref<Book[]>([])
+const { items: books, initialized, init: initBooksCollection } = firestoreCollectionLoader(BOOKS_COLLECTION, { orderByField: 'release_order' })
 const characters = ref<Character[]>([])
 const appearances = ref<Appearance[]>([])
-const loaded = ref(false)
-let unsubscribe: (() => void) | null = null
 
 export function useCosmere(): CosmereStore {
   async function load() {
-    if (loaded.value) return
-    const db = useFirestore()
-
-    const [booksSnap, c, a] = await Promise.all([
-      getDocs(query(collection(db, 'books'), orderBy('release_order'))),
-      $fetch<Character[]>('/data/characters.json'),
-      $fetch<Appearance[]>('/data/appearances.json'),
+    if (initialized.value) return
+    await Promise.all([
+      initBooksCollection(),
+      $fetch<Character[]>('/data/characters.json').then(c => { characters.value = c }),
+      $fetch<Appearance[]>('/data/appearances.json').then(a => { appearances.value = a }),
     ])
-
-    books.value = booksSnap.docs.map(d => ({ slug: d.id, ...d.data() } as Book))
-    characters.value = c
-    appearances.value = a
-    loaded.value = true
-
-    // Real-time updates after initial load
-    unsubscribe = onSnapshot(
-      query(collection(db, 'books'), orderBy('release_order')),
-      (snap) => { books.value = snap.docs.map(d => ({ slug: d.id, ...d.data() } as Book)) },
-      (err) => console.error('[books snapshot]', err)
-    )
-    if (typeof window !== 'undefined') window.addEventListener('beforeunload', () => unsubscribe?.())
   }
 
-  return { books, characters, appearances, loaded, load }
+  return { books, characters, appearances, initialized, load }
 }
