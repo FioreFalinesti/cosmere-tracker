@@ -52,7 +52,7 @@
             :style="rangeTextStyle(ev)"
           >
             <span class="text-xs font-mono text-indigo-400 shrink-0 group-hover:text-accent-300 transition-colors">
-              {{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}–{{ resolvedYearEnd(ev) != null ? resolvedYearEnd(ev) : '—' }}
+              {{ ev.estimated ? '~' : '' }}{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}–{{ resolvedYearEnd(ev) != null ? resolvedYearEnd(ev) : '—' }}
             </span>
             <span
               class="text-sm group-hover:text-accent-300 transition-colors"
@@ -78,7 +78,7 @@
           />
           <div class="flex items-baseline gap-2">
             <span class="text-xs font-mono text-indigo-400 shrink-0 group-hover:text-accent-300 transition-colors">
-              {{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}
+              {{ ev.estimated ? '~' : '' }}{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}
             </span>
             <span
               class="text-sm truncate group-hover:text-accent-300 transition-colors"

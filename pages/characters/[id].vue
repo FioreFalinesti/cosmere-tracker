@@ -11,6 +11,7 @@
           :class="character.name === 'unknown' ? 'text-indigo-500 italic font-normal' : 'text-blue-50'"
         >{{ character.name }}</h1>
         <span v-if="character.isPoV" class="text-sm text-gold-400 font-medium">PoV Character</span>
+        <span v-if="isCharacterDead" class="text-sm text-red-400 font-medium">Deceased</span>
       </div>
       <p class="text-indigo-400 text-sm mb-4">{{ character.world }}</p>
       <p class="text-blue-200 leading-relaxed max-w-2xl">{{ character.description }}</p>
@@ -41,13 +42,31 @@
 </template>
 
 <script setup>
+import { resolveStatus } from '~/utils/timelineFieldResolvers'
+
 const route = useRoute()
 const { characters, books, appearances, load } = useCosmere()
-const { init: initEvents, isBookReached } = useTimelineEvents()
+const { events: timelineEvents, init: initEvents, isReached, isBookReached } = useTimelineEvents()
+const { entities, init: initEntities } = useEntitySettings()
 await load()
 await initEvents()
+await initEntities()
 
 const character = computed(() => characters.value.find(c => c.id === route.params.id))
+
+// Mirrors the same badge/logic on the characters list page.
+const isCharacterDead = computed(() => {
+  const c = character.value
+  if (!c) return false
+  const explicit = c.death_event_slug
+    ? timelineEvents.value.some(ev => ev.slug === c.death_event_slug && isReached(ev))
+    : false
+  if (explicit) return true
+  if (!c.vessel_of_slug) return false
+  const shard = entities.value.find(e => e.slug === c.vessel_of_slug)
+  if (!shard) return false
+  return resolveStatus(shard.status_events ?? [], shard.status) === 'splintered'
+})
 
 // Only the books reached so far — a character navigated to directly (e.g. a
 // bookmark) shouldn't have their future appearances spoiled here either.

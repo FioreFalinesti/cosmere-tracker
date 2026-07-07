@@ -23,6 +23,10 @@
         <input type="checkbox" v-model="filters.shardholdersOnly" class="accent-accent-600" />
         Shardholders
       </label>
+      <label class="flex items-center gap-2 text-sm text-indigo-300 cursor-pointer">
+        <input type="checkbox" v-model="filters.hideDeceased" class="accent-accent-600" />
+        Hide deceased
+      </label>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -31,8 +35,15 @@
         :key="character.id"
         :to="`/characters/${character.id}`"
         class="group flex flex-col bg-surface-800 border border-surface-700 rounded-xl p-4 hover:border-accent-500/50 hover:bg-surface-700 transition-all"
+        :class="{ 'opacity-50': isCharacterDead(character) }"
       >
         <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <ShardIcon
+            v-if="currentShardFor(character)"
+            :color="currentShardFor(character).color"
+            :size="35"
+            class="shrink-0"
+          />
           <span
             class="font-semibold transition-colors"
             :class="character.name === 'unknown' ? 'text-indigo-500 italic font-normal group-hover:text-indigo-400' : 'text-blue-50 group-hover:text-accent-400'"
@@ -40,6 +51,7 @@
             {{ character.name }}
           </span>
           <span v-if="character.isPoV" class="text-xs text-gold-400 font-medium">PoV</span>
+          <span v-if="isCharacterDead(character)" class="text-xs text-red-400 font-medium">Deceased</span>
         </div>
         <p class="text-xs text-indigo-400 mb-2">{{ character.world }}</p>
         <p class="text-sm text-blue-200 line-clamp-2 mb-3">{{ character.description }}</p>
@@ -65,10 +77,10 @@
 
 <script setup>
 import Fuse from 'fuse.js'
-import { resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
+import { resolveStatus, INACTIVE_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
 
 const { characters, books, appearances, load } = useCosmere()
-const { init: initEvents, isReached, isBookReached } = useTimelineEvents()
+const { events: timelineEvents, init: initEvents, isReached, isBookReached } = useTimelineEvents()
 const { entities, init: initEntities } = useEntitySettings()
 await load()
 await initEvents()
@@ -91,23 +103,47 @@ function isCharacterRevealed(c) {
 
 const revealedCharacters = computed(() => characters.value.filter(isCharacterRevealed))
 
-// A "current" vessel: still linked to a Shard whose resolved status (as of
-// the current timeline event) hasn't moved to a terminal state — splintering
-// a Shard means its vessel no longer holds it, so they drop out of this view
-// from that point on, same as any other time-aware status in this app.
-function isCurrentVessel(c) {
+// A character dies either explicitly — a `death_event_slug` pointing at the
+// timeline event where it happens, mirroring `reveal_event_slug` above — or,
+// for a Shard's original Vessel, implicitly: splintering a Shard kills its
+// Vessel unless a book states otherwise, so this is derived from the Shard's
+// own status_events rather than duplicated per-character.
+function isCharacterDead(c) {
+  const explicit = c.death_event_slug
+    ? timelineEvents.value.some(ev => ev.slug === c.death_event_slug && isReached(ev))
+    : false
+  if (explicit) return true
   if (!c.vessel_of_slug) return false
   const shard = entities.value.find(e => e.slug === c.vessel_of_slug)
   if (!shard) return false
-  const status = resolveStatus(shard.status_events ?? [], shard.status)
-  return !TERMINAL_SHARD_STATUSES.includes(status)
+  return resolveStatus(shard.status_events ?? [], shard.status) === 'splintered'
 }
 
-const filters = reactive({ shardholdersOnly: false })
+// The Shard a character currently holds, if any: still linked to a Shard
+// whose resolved status (as of the current timeline event) is an active,
+// distinct Shard — not yet formed (e.g. Harmony, pre-Catacendre) or past a
+// terminal state (splintering means its vessel no longer holds it) both
+// drop them out of this, same as any other time-aware status in this app.
+function currentShardFor(c) {
+  if (!c.vessel_of_slug) return null
+  const shard = entities.value.find(e => e.slug === c.vessel_of_slug)
+  if (!shard) return null
+  const status = resolveStatus(shard.status_events ?? [], shard.status)
+  return INACTIVE_SHARD_STATUSES.includes(status) ? null : shard
+}
 
-const filteredCharacters = computed(() =>
-  filters.shardholdersOnly ? revealedCharacters.value.filter(isCurrentVessel) : revealedCharacters.value
-)
+function isCurrentVessel(c) {
+  return !!currentShardFor(c)
+}
+
+const filters = reactive({ shardholdersOnly: false, hideDeceased: false })
+
+const filteredCharacters = computed(() => {
+  let list = revealedCharacters.value
+  if (filters.shardholdersOnly) list = list.filter(isCurrentVessel)
+  if (filters.hideDeceased) list = list.filter(c => !isCharacterDead(c))
+  return list
+})
 
 const query = ref('')
 

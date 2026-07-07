@@ -44,7 +44,7 @@
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { averageHexColors } from '~/utils/colorUtils'
-import { resolveOrbitDistance, resolveExists, resolveLocation, resolveStatus, TERMINAL_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
+import { resolveOrbitDistance, resolveExists, resolveLocation, resolveStatus, INACTIVE_SHARD_STATUSES } from '~/utils/timelineFieldResolvers'
 import { getMoonOrbitType, getSatelliteType } from '~/utils/satelliteUtils'
 import { memberSlug, memberType, systemMembers, systemPlanetSlugs } from '~/utils/systemMembers'
 import { bodyVisualSize } from '~/utils/bodyVisuals'
@@ -72,7 +72,8 @@ await initEvents()
 // system" reads better zoomed out than snapped to one planet in it).
 watch(currentEvent, ev => {
   if (!ev) return
-  if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
+  if (ev.zoom_scope === 'map') zoomTarget.value = { type: 'map' }
+  else if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
   else if (ev.planet_slug) zoomTarget.value = { type: 'planet', slug: ev.planet_slug }
   else if (ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
 }, { immediate: true })
@@ -94,13 +95,14 @@ function isVisible(entity, eventsField) {
 // Shards and splinter-remnants (e.g. the Dor) currently located at a given
 // system/planet slug — one that's splintered, destroyed, or combined into a
 // new fused Shard drops off the map entirely rather than lingering at its
-// last known location.
+// last known location, and one formed by combination (e.g. Harmony, the Dor)
+// doesn't show up before it actually forms.
 function shardBadgesAt(locationSlug) {
   return entities.value
     .filter(e =>
       (e.type === 'shard' || e.type === 'splinter-remnant') &&
       resolveLocation(e.location_events ?? [], e.location_slug) === locationSlug &&
-      !TERMINAL_SHARD_STATUSES.includes(resolveStatus(e.status_events ?? [], e.status))
+      !INACTIVE_SHARD_STATUSES.includes(resolveStatus(e.status_events ?? [], e.status))
     )
     .map(e => ({
       slug: e.slug,

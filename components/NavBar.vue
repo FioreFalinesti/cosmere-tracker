@@ -62,6 +62,17 @@
                 <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="editPositions ? 'translate-x-5' : 'translate-x-1'" />
               </button>
             </div>
+            <div class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-indigo-300 border-t border-surface-700 mt-1 pt-2">
+              <span>New Sidebar UI</span>
+              <button
+                type="button"
+                class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none shrink-0"
+                :class="nuxtUiTimeline ? 'bg-accent-600' : 'bg-surface-600'"
+                @click="setNuxtUiTimeline(!nuxtUiTimeline)"
+              >
+                <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="nuxtUiTimeline ? 'translate-x-5' : 'translate-x-1'" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -71,6 +82,8 @@
 
 <script setup>
 const { editPositions, startEdit, saveEdit } = useMapState()
+const { nuxtUiTimeline, initNuxtUiTimeline, setNuxtUiTimeline } = useTimelinePrefs()
+initNuxtUiTimeline()
 const route = useRoute()
 
 const NAV_LINKS = [
@@ -78,6 +91,7 @@ const NAV_LINKS = [
   { to: '/books', label: 'Books' },
   { to: '/characters', label: 'Characters' },
   { to: '/shards', label: 'Shards' },
+  { to: '/magic-systems', label: 'Magic Systems' },
 ]
 
 const menuOpen = ref(false)

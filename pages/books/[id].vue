@@ -71,6 +71,7 @@
     </div>
   </div>
 
+  <div v-else-if="book" class="text-indigo-400">This book hasn't been reached in your timeline yet.</div>
   <div v-else class="text-indigo-400">Book not found.</div>
 </template>
 

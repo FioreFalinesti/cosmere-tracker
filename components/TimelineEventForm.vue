@@ -42,6 +42,10 @@
           <input v-model="draft.anchorOffset" type="number" placeholder="+ years after"
             class="bg-surface-700 border border-surface-600 rounded-lg px-3 py-2 text-sm text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors w-32" />
         </template>
+        <label class="flex items-center gap-1.5 text-xs text-indigo-300 cursor-pointer">
+          <input type="checkbox" v-model="draft.estimated" class="accent-accent-600" />
+          Estimated
+        </label>
       </div>
 
       <div v-if="draft.type === 'range'" class="flex flex-wrap items-center gap-3">
@@ -87,17 +91,22 @@
             <option v-for="p in planetOptions" :key="p.slug" :value="p.slug">{{ p.name }}</option>
           </select>
         </div>
-        <div v-if="draft.planetSlug" class="inline-flex rounded-lg border border-surface-600 overflow-hidden">
-          <button type="button"
+        <div class="inline-flex rounded-lg border border-surface-600 overflow-hidden">
+          <button v-if="draft.planetSlug" type="button"
             class="px-2 py-1.5 text-xs transition-colors"
             :class="draft.zoomScope === 'planet' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-300 hover:text-blue-100'"
             @click="draft.zoomScope = 'planet'"
           >Focus: Planet</button>
-          <button type="button"
+          <button v-if="draft.systemSlug" type="button"
             class="px-2 py-1.5 text-xs transition-colors"
             :class="draft.zoomScope === 'system' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-300 hover:text-blue-100'"
             @click="draft.zoomScope = 'system'"
           >Focus: System</button>
+          <button type="button"
+            class="px-2 py-1.5 text-xs transition-colors"
+            :class="draft.zoomScope === 'map' ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-300 hover:text-blue-100'"
+            @click="draft.zoomScope = 'map'"
+          >Focus: Whole Map</button>
         </div>
       </div>
       <textarea v-model="draft.description" placeholder="Description (optional)" rows="2"

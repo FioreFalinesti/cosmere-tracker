@@ -82,29 +82,84 @@ function computeOrder(isUndated) {
     : null
 }
 
+// Mirrors one hop of resolvedYears' recursive resolve() — safe as a single
+// hop (no cycle-guarding needed) because a draft's anchor must already be a
+// saved event to be selectable in the form, so it's already fully resolved.
+function computeEffectiveYearForPatch({ event_type, year_start, year_end, anchor_slug, anchor_offset, duration }) {
+  let start
+  if (anchor_slug) {
+    const anchor = events.value.find(e => e.slug === anchor_slug)
+    const anchorYear = anchor ? eventYear(anchor) : null
+    start = anchorYear != null ? anchorYear + (anchor_offset ?? 0) : null
+  } else {
+    start = year_start
+  }
+  if (event_type !== 'range') return start
+  const end = duration != null && start != null ? start + duration : year_end
+  return end ?? start
+}
+
+// Slots a dated draft into its correct position among existing events
+// without requiring a full "Resort by year" afterward — walks the
+// currently-displayed order (which mixes legacy manual `order` values with
+// year-fallback ones, see effectiveOrder) and finds the last/first neighbor
+// whose own resolved year brackets this one, landing between their
+// effectiveOrders. Fractional is fine since only relative comparison
+// matters, not integer spacing. Undated events have no year to compare and
+// are skipped — they keep sorting at the end via their own large sequential
+// order, safely out of range of any fractional value produced here.
+function computeYearOrder(year, excludeSlug) {
+  if (year == null) return null
+  let prev = null, next = null
+  for (const ev of orderedEvents.value) {
+    if (ev.slug === excludeSlug) continue
+    const evYear = eventYear(ev)
+    if (evYear == null) continue
+    if (evYear <= year) prev = ev
+    else { next = ev; break }
+  }
+  const prevOrder = prev ? effectiveOrder(prev) : null
+  const nextOrder = next ? effectiveOrder(next) : null
+  if (prevOrder != null && nextOrder != null) return (prevOrder + nextOrder) / 2
+  if (prevOrder != null) return prevOrder + 1
+  if (nextOrder != null) return nextOrder - 1
+  return null
+}
+
 // Maps a TimelineEventForm draft to the Firestore patch shape. Shared by
 // every place that submits the form (Settings' full editor, InfoPanel's
 // quick-create for linking an orbit-event trigger) so they can't drift apart
 // as fields are added — a quick-create that skipped a field here would
-// silently lose anchored dating, entity tags, etc.
-export function timelineDraftToPatch(draft, fallbackTitle = '') {
+// silently lose anchored dating, entity tags, etc. `excludeSlug` should be
+// the event's own slug when editing, so it doesn't get compared against
+// itself when computing where it now belongs.
+export function timelineDraftToPatch(draft, fallbackTitle = '', excludeSlug = null) {
   const isUndated = draft.yearMode === 'absolute' && draft.yearStart === ''
+  const event_type = draft.type
+  const year_start = draft.yearMode === 'absolute' && draft.yearStart !== '' ? Number(draft.yearStart) : null
+  const year_end = draft.type === 'range' && draft.endMode === 'absolute' ? Number(draft.yearEnd) : null
+  const anchor_slug = draft.yearMode === 'relative' ? draft.anchorSlug : null
+  const anchor_offset = draft.yearMode === 'relative' ? Number(draft.anchorOffset) : null
+  const duration = draft.type === 'range' && draft.endMode === 'duration' ? Number(draft.duration) : null
+  const effectiveYear = computeEffectiveYearForPatch({ event_type, year_start, year_end, anchor_slug, anchor_offset, duration })
+
   return {
     title: draft.title.trim() || fallbackTitle,
     description: (draft.description ?? '').trim(),
-    event_type: draft.type,
-    year_start: draft.yearMode === 'absolute' && draft.yearStart !== '' ? Number(draft.yearStart) : null,
-    year_end: draft.type === 'range' && draft.endMode === 'absolute' ? Number(draft.yearEnd) : null,
-    anchor_slug: draft.yearMode === 'relative' ? draft.anchorSlug : null,
-    anchor_offset: draft.yearMode === 'relative' ? Number(draft.anchorOffset) : null,
-    duration: draft.type === 'range' && draft.endMode === 'duration' ? Number(draft.duration) : null,
+    event_type,
+    year_start,
+    year_end,
+    anchor_slug,
+    anchor_offset,
+    duration,
     book_slug: draft.bookSlug || null,
     planet_slug: draft.planetSlug || null,
     system_slug: draft.systemSlug || null,
-    zoom_scope: draft.planetSlug && draft.zoomScope === 'system' ? 'system' : null,
+    zoom_scope: draft.zoomScope === 'map' ? 'map' : (draft.planetSlug && draft.zoomScope === 'system' ? 'system' : null),
     orbit_event_ids: draft.orbitEventIds ?? [],
     entity_slugs: draft.entitySlugs ?? [],
-    order: computeOrder(isUndated),
+    order: isUndated ? computeOrder(true) : computeYearOrder(effectiveYear, excludeSlug),
+    estimated: !!draft.estimated,
   }
 }
 
@@ -114,6 +169,7 @@ function emptyTimelineDraft() {
     yearMode: 'absolute', yearStart: '', anchorSlug: '', anchorOffset: '',
     endMode: 'absolute', yearEnd: '', duration: '',
     bookSlug: '', systemSlug: '', planetSlug: '', zoomScope: 'planet', orbitEventIds: [], entitySlugs: [],
+    estimated: false,
   }
 }
 
@@ -185,12 +241,13 @@ export function useTimelineEvents() {
     const ev = events.value.find(e => e.slug === slug)
     if (!ev) return
     const { zoomTarget } = useMapState()
-    if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
+    if (ev.zoom_scope === 'map') zoomTarget.value = { type: 'map' }
+    else if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
     else if (ev.planet_slug) zoomTarget.value = { type: 'planet', slug: ev.planet_slug }
     else if (ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
   }
 
-  async function addTimelineEvent({ title, description, event_type, year_start, year_end, anchor_slug, anchor_offset, duration, book_slug, planet_slug, system_slug, orbit_event_ids, entity_slugs, zoom_scope }) {
+  async function addTimelineEvent({ title, description, event_type, year_start, year_end, anchor_slug, anchor_offset, duration, book_slug, planet_slug, system_slug, orbit_event_ids, entity_slugs, zoom_scope, estimated, order }) {
     const db = useFirestore()
     const isUndated = year_start == null && !anchor_slug
     const data = {
@@ -206,9 +263,13 @@ export function useTimelineEvents() {
       planet_slug: planet_slug || null,
       system_slug: system_slug || null,
       zoom_scope: zoom_scope || null,
-      order: computeOrder(isUndated),
+      // Callers building this via timelineDraftToPatch already computed the
+      // correct chronological slot (see computeYearOrder) — only fall back
+      // to appending-at-end here for a caller that didn't supply one at all.
+      order: order !== undefined ? order : computeOrder(isUndated),
       orbit_event_ids: orbit_event_ids ?? [],
       entity_slugs: entity_slugs ?? [],
+      estimated: !!estimated,
     }
     const docRef = await addDoc(collection(db, TIMELINE_EVENTS_COLLECTION), data)
     if (!events.value.some(e => e.slug === docRef.id)) {

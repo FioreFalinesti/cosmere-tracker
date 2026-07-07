@@ -356,6 +356,9 @@ watch(zoomTarget, target => {
     } else if (target.type === 'system') {
       const systemNode = findNode(`system-${target.slug}`)
       if (systemNode) zoomToSystem(systemNode, true)
+    } else if (target.type === 'map') {
+      const systemIds = getNodes.value.filter(n => n.type === 'system').map(n => n.id)
+      if (systemIds.length) fitView({ nodes: systemIds, padding: 0.15, duration: 600 })
     }
     zoomTarget.value = null
   })

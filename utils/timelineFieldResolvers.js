@@ -51,3 +51,14 @@ export function resolveLocation(events, baselineSlug) {
 // a new fused Shard (e.g. Ruin + Preservation -> Harmony) — so it drops out
 // of any "currently held Shards" view (map badges, Characters page filter).
 export const TERMINAL_SHARD_STATUSES = ['splintered', 'destroyed', 'combined']
+
+// A Shard/splinter-remnant that's formed by combination rather than present
+// from the Shattering (e.g. Harmony, the Dor) starts out here instead of a
+// normal "held" baseline — it doesn't exist as a distinct Shard *yet*,
+// mirroring TERMINAL_SHARD_STATUSES at the other end of its lifespan. Kept
+// separate from that list since the two mean opposite things (hasn't started
+// vs. has ended), but combined below wherever a caller just needs "is this
+// currently a distinct, active Shard at all."
+export const NOT_YET_FORMED_SHARD_STATUSES = ['not yet formed']
+
+export const INACTIVE_SHARD_STATUSES = [...NOT_YET_FORMED_SHARD_STATUSES, ...TERMINAL_SHARD_STATUSES]

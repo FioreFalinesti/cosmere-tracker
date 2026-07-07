@@ -76,7 +76,7 @@
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === 0" @click="moveEvent(ev.slug, -1)">▲</button>
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === orderedEvents.length - 1" @click="moveEvent(ev.slug, 1)">▼</button>
                 </div>
-                <span class="text-xs font-mono text-indigo-400 w-24 shrink-0">{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}{{ ev.event_type === 'range' && resolvedYearEnd(ev) != null ? '–' + resolvedYearEnd(ev) : '' }}</span>
+                <span class="text-xs font-mono text-indigo-400 w-24 shrink-0">{{ ev.estimated ? '~' : '' }}{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}{{ ev.event_type === 'range' && resolvedYearEnd(ev) != null ? '–' + resolvedYearEnd(ev) : '' }}</span>
                 <span class="flex-1 text-sm text-blue-100 truncate">{{ ev.title }}</span>
                 <span v-if="ev.book_slug" class="text-xs text-indigo-500 truncate">{{ bookTitle(ev.book_slug) }}</span>
                 <button class="text-xs text-indigo-400 hover:text-blue-100 transition-colors shrink-0" @click="startEditEvent(ev)">Edit</button>
@@ -191,8 +191,8 @@ async function doResort() {
   }
 }
 
-function draftToPatch(draft) {
-  return timelineDraftToPatch(draft, draft.bookSlug ? bookTitle(draft.bookSlug) : '')
+function draftToPatch(draft, excludeSlug = null) {
+  return timelineDraftToPatch(draft, draft.bookSlug ? bookTitle(draft.bookSlug) : '', excludeSlug)
 }
 
 const newDraft = reactive(emptyTimelineDraft())
@@ -232,10 +232,11 @@ function startEditEvent(ev) {
     bookSlug: ev.book_slug ?? '',
     systemSlug: ev.system_slug ?? '',
     planetSlug: ev.planet_slug ?? '',
-    zoomScope: ev.zoom_scope === 'system' ? 'system' : 'planet',
+    zoomScope: ev.zoom_scope === 'map' ? 'map' : (ev.zoom_scope === 'system' ? 'system' : 'planet'),
     description: ev.description ?? '',
     orbitEventIds: [...(ev.orbit_event_ids ?? [])],
     entitySlugs: [...(ev.entity_slugs ?? [])],
+    estimated: !!ev.estimated,
   })
   editStatus.value = 'idle'
   editError.value = ''
@@ -249,7 +250,7 @@ async function saveEditEvent() {
   editStatus.value = 'running'
   editError.value = ''
   try {
-    await updateTimelineEvent(editingSlug.value, draftToPatch(editDraft))
+    await updateTimelineEvent(editingSlug.value, draftToPatch(editDraft, editingSlug.value))
     editingSlug.value = null
   } catch (e) {
     editError.value = `Failed to save event: ${e.message}`

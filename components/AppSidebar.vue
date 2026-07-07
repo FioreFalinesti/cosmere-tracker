@@ -12,7 +12,8 @@
     >{{ collapsed ? '»' : '«' }}</button>
 
     <template v-if="!collapsed">
-      <TimelineList v-if="showSidebarLists" />
+      <TimelineListUi v-if="showSidebarLists && nuxtUiTimeline" />
+      <TimelineList v-else-if="showSidebarLists" />
     </template>
   </aside>
 </template>
@@ -20,7 +21,8 @@
 <script setup>
 import { SIDEBAR_WIDTH } from '~/composables/useMapState'
 
-const { initTimelineOrder } = useTimelinePrefs()
+const { initTimelineOrder, nuxtUiTimeline, initNuxtUiTimeline } = useTimelinePrefs()
+initNuxtUiTimeline()
 const route = useRoute()
 
 // Settings page has its own full editable event list — showing the read-only

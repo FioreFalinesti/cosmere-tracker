@@ -1,3 +1,22 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --color-surface-950: #0f1a30;
+  --color-surface-900: #162038;
+  --color-surface-800: #1c2845;
+  --color-surface-700: #253352;
+  --color-surface-600: #2f4068;
+
+  --color-accent-300: #d8b4fe;
+  --color-accent-400: #c084fc;
+  --color-accent-500: #a855f7;
+  --color-accent-600: #9333ea;
+
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #f59e0b;
+}
+
 html {
   background-color: theme('colors.blue.950');
   color: #dde4f5;
