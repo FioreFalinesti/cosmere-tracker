@@ -37,8 +37,23 @@
           </button>
           <div
             v-if="menuOpen"
-            class="absolute right-0 mt-2 w-40 rounded-lg border border-surface-700 bg-surface-800 shadow-lg py-1"
+            class="absolute right-0 mt-2 w-48 rounded-lg border border-surface-700 bg-surface-800 shadow-lg py-1"
           >
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-surface-700 mb-1">
+              <template v-if="currentUser">
+                <img v-if="currentUser.photoURL" :src="currentUser.photoURL" class="w-6 h-6 rounded-full shrink-0" />
+                <span class="flex-1 text-xs text-indigo-300 truncate">{{ currentUser.displayName || currentUser.email }}</span>
+                <button type="button" class="text-xs text-indigo-400 hover:text-red-400 transition-colors shrink-0" @click="logout">Sign out</button>
+              </template>
+              <button
+                v-else
+                type="button"
+                class="w-full text-left text-sm text-indigo-300 hover:text-blue-100 transition-colors"
+                @click="login"
+              >
+                Sign in with Google
+              </button>
+            </div>
             <NuxtLink
               to="/settings"
               class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-300 hover:text-blue-100 hover:bg-surface-700 transition-colors"
@@ -51,7 +66,7 @@
               </svg>
               Settings
             </NuxtLink>
-            <div v-if="route.path === '/'" class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-indigo-300 border-t border-surface-700 mt-1 pt-2">
+            <div v-if="route.path === '/' && isAdmin" class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-indigo-300 border-t border-surface-700 mt-1 pt-2">
               <span>Edit Positions</span>
               <button
                 type="button"
@@ -83,6 +98,7 @@
 <script setup>
 const { editPositions, startEdit, saveEdit } = useMapState()
 const { nuxtUiTimeline, initNuxtUiTimeline, setNuxtUiTimeline } = useTimelinePrefs()
+const { currentUser, isAdmin, login, logout } = useAuthState()
 initNuxtUiTimeline()
 const route = useRoute()
 

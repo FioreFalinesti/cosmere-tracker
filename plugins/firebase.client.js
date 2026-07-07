@@ -1,4 +1,5 @@
 import { initFirebase } from '~/composables/useFirebase'
+import { useAuthState } from '~/composables/useAuthState'
 
 export default defineNuxtPlugin(() => {
   const config = useRuntimeConfig()
@@ -10,4 +11,5 @@ export default defineNuxtPlugin(() => {
     messagingSenderId: config.public.firebaseMessagingSenderId,
     appId: config.public.firebaseAppId,
   })
+  useAuthState().initAuth()
 })

@@ -83,7 +83,7 @@
             <span class="text-xs text-indigo-400 uppercase tracking-widest">Particulate Ring</span>
             <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedSystem.star_particulate_ring ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setSystemStarParticulateRing(selectedSystem.slug, !selectedSystem.star_particulate_ring)">
+              @click="isAdmin && setSystemStarParticulateRing(selectedSystem.slug, !selectedSystem.star_particulate_ring)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedSystem.star_particulate_ring ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -92,7 +92,7 @@
             <span class="text-xs text-indigo-400 uppercase tracking-widest">Exists From Start</span>
             <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedSystem.exists_from_start !== false ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setSystemExistsFromStart(selectedSystem.slug, selectedSystem.exists_from_start === false)">
+              @click="isAdmin && setSystemExistsFromStart(selectedSystem.slug, selectedSystem.exists_from_start === false)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedSystem.exists_from_start !== false ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -123,12 +123,14 @@
                   type="number" step="10" min="0" placeholder="auto"
                   :value="planetBySlug(member.slug)?.orbit_distance ?? ''"
                   @change="onPlanetOrbitChange(member.slug, $event)"
-                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0"
+                  :disabled="!isAdmin"
+                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0 disabled:opacity-60"
                 />
                 <select v-if="systemMembers(selectedSystem).some(m => memberType(m) === 'star')"
                   :value="member.lagrange_point ?? ''"
                   @change="onLagrangeChange(mi, $event)"
-                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors">
+                  :disabled="!isAdmin"
+                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors disabled:opacity-60">
                   <option value="">Free</option>
                   <option value="1">L1</option>
                   <option value="2">L2</option>
@@ -153,10 +155,11 @@
                   type="number" step="10" min="0" placeholder="auto"
                   :value="member.orbit_distance ?? ''"
                   @change="onBodyOrbitChange(mi, $event)"
-                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0"
+                  :disabled="!isAdmin"
+                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0 disabled:opacity-60"
                 />
               </template>
-              <div class="flex gap-0.5 shrink-0">
+              <div v-if="isAdmin" class="flex gap-0.5 shrink-0">
                 <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 px-0.5 text-xs transition-colors" :disabled="mi === 0" @click="moveSystemMember(mi, -1)">↑</button>
                 <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 px-0.5 text-xs transition-colors" :disabled="mi === (selectedSystem.members ?? []).length - 1" @click="moveSystemMember(mi, 1)">↓</button>
                 <button class="text-red-400 hover:text-red-300 px-0.5 text-sm transition-colors" @click="removeSystemMember(mi)">×</button>
@@ -166,7 +169,7 @@
           </div>
 
           <!-- Add controls -->
-          <div class="space-y-2">
+          <div v-if="isAdmin" class="space-y-2">
             <div class="flex gap-2">
               <input v-model="newPlanetName" type="text" placeholder="New planet name…"
                 class="flex-1 min-w-0 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1.5 text-xs text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors"
@@ -291,7 +294,7 @@
               <span class="text-xs text-indigo-400 uppercase tracking-widest">Particulate Ring</span>
               <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
                 :class="selectedBodyMember.particulate_ring ? 'bg-accent-600' : 'bg-surface-600'"
-                @click="setSystemBodyParticulateRing(selectedSystem.slug, selectedBodyMemberIndex, !selectedBodyMember.particulate_ring)">
+                @click="isAdmin && setSystemBodyParticulateRing(selectedSystem.slug, selectedBodyMemberIndex, !selectedBodyMember.particulate_ring)">
                 <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform"
                   :class="selectedBodyMember.particulate_ring ? 'translate-x-5' : 'translate-x-1'" />
               </button>
@@ -317,7 +320,7 @@
                 <button class="text-sm font-mono transition-colors"
                   :class="selectedBodyMember.orbit_distance != null ? 'text-blue-100 hover:text-accent-300' : 'text-indigo-600 italic hover:text-indigo-400'"
                   @click="startBodyOrbitEdit">{{ selectedBodyMember.orbit_distance != null ? `${selectedBodyMember.orbit_distance}px` : 'Auto' }}</button>
-                <button v-if="selectedBodyMember.orbit_distance != null"
+                <button v-if="selectedBodyMember.orbit_distance != null && isAdmin"
                   class="text-indigo-600 hover:text-red-400 text-xs leading-none transition-colors" title="Reset to auto"
                   @click="async () => { await setSystemBodyOrbitDistance(selectedSystem.slug, selectedBodyMemberIndex, null) }">×</button>
               </template>
@@ -384,6 +387,7 @@
               <button v-for="opt in planetTypeOptions" :key="opt.value"
                 class="flex-1 px-2 py-1.5 text-xs rounded-lg transition-colors"
                 :class="planetType === opt.value ? 'bg-accent-600 text-white' : 'bg-surface-700 text-indigo-400 hover:text-blue-100'"
+                :disabled="!isAdmin"
                 @click="setPlanetType(opt.value)">{{ opt.label }}</button>
             </div>
           </div>
@@ -411,7 +415,7 @@
             <span v-if="planetType !== 'normal'" class="text-xs text-indigo-600 italic">Auto</span>
             <button v-else class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedPlanet.uninhabited ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setPlanetUninhabited(selectedPlanet.slug, !selectedPlanet.uninhabited)">
+              @click="isAdmin && setPlanetUninhabited(selectedPlanet.slug, !selectedPlanet.uninhabited)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.uninhabited ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -420,7 +424,7 @@
             <span class="text-xs text-indigo-400 uppercase tracking-widest">Exists From Start</span>
             <button class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none"
               :class="selectedPlanet.exists_from_start !== false ? 'bg-accent-600' : 'bg-surface-600'"
-              @click="setPlanetExistsFromStart(selectedPlanet.slug, selectedPlanet.exists_from_start === false)">
+              @click="isAdmin && setPlanetExistsFromStart(selectedPlanet.slug, selectedPlanet.exists_from_start === false)">
               <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="selectedPlanet.exists_from_start !== false ? 'translate-x-5' : 'translate-x-1'" />
             </button>
           </div>
@@ -445,7 +449,7 @@
                 <button class="text-sm font-mono transition-colors"
                   :class="selectedPlanet.orbit_distance != null ? 'text-blue-100 hover:text-accent-300' : 'text-indigo-600 italic hover:text-indigo-400'"
                   @click="startOrbitDistanceEdit">{{ selectedPlanet.orbit_distance != null ? `${selectedPlanet.orbit_distance}px` : 'Auto' }}</button>
-                <button v-if="selectedPlanet.orbit_distance != null"
+                <button v-if="selectedPlanet.orbit_distance != null && isAdmin"
                   class="text-indigo-600 hover:text-red-400 text-xs leading-none transition-colors" title="Reset to auto"
                   @click="setPlanetOrbitDistance(selectedPlanet.slug, null)">×</button>
               </template>
@@ -475,11 +479,12 @@
                 <select
                   :value="getSatelliteType(selectedPlanet, moon)"
                   @change="setPlanetSatelliteType(selectedPlanet.slug, moon, $event.target.value)"
-                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors">
+                  :disabled="!isAdmin"
+                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors disabled:opacity-60">
                   <option value="moon">Moon</option>
                   <option value="ring">Ring</option>
                 </select>
-                <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0"
+                <button v-if="isAdmin" class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0"
                   @click="updatePlanetMoons(selectedPlanet.slug, (selectedPlanet.moons ?? []).filter(m => m !== moon))">×</button>
               </div>
               <!-- Row 2: orbit + type-specific controls -->
@@ -488,8 +493,9 @@
                 <input type="number" step="10" min="0" placeholder="auto"
                   :value="(selectedPlanet.moon_orbit_distances ?? {})[moon] ?? ''"
                   @change="onMoonOrbitChange(moon, $event)"
-                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0" />
-                <button v-if="(selectedPlanet.moon_orbit_distances ?? {})[moon] != null"
+                  :disabled="!isAdmin"
+                  class="w-16 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0 disabled:opacity-60" />
+                <button v-if="(selectedPlanet.moon_orbit_distances ?? {})[moon] != null && isAdmin"
                   class="text-indigo-600 hover:text-red-400 text-xs leading-none transition-colors shrink-0"
                   title="Reset to auto"
                   @click="onMoonOrbitChange(moon, { target: { value: '0' } })">×</button>
@@ -497,7 +503,8 @@
                 <select v-if="getSatelliteType(selectedPlanet, moon) === 'moon'"
                   :value="getMoonOrbitType(selectedPlanet, moon)"
                   @change="onMoonOrbitTypeChange(moon, $event)"
-                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors">
+                  :disabled="!isAdmin"
+                  class="bg-surface-700 border border-surface-600 rounded px-1 py-0.5 text-xs text-indigo-300 focus:outline-none focus:border-accent-500 shrink-0 transition-colors disabled:opacity-60">
                   <option value="standard">Standard</option>
                   <option value="polar">Polar</option>
                   <option value="eccentric-a">Oblate</option>
@@ -509,18 +516,20 @@
                   <input type="number" step="1" min="1" placeholder="auto"
                     :value="(selectedPlanet.satellite_thicknesses ?? {})[moon] ?? ''"
                     @change="onSatelliteThicknessChange(moon, $event)"
-                    class="w-14 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0" />
+                    :disabled="!isAdmin"
+                    class="w-14 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0 disabled:opacity-60" />
                   <span class="text-xs text-indigo-500 shrink-0">tilt</span>
                   <input type="number" step="5" placeholder="0°"
                     :value="(selectedPlanet.satellite_tilts ?? {})[moon] ?? ''"
                     @change="onSatelliteTiltChange(moon, $event)"
-                    class="w-14 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0" />
+                    :disabled="!isAdmin"
+                    class="w-14 bg-surface-700 border border-surface-600 rounded px-1.5 py-0.5 text-xs font-mono text-blue-100 placeholder-indigo-700 focus:outline-none focus:border-accent-500 transition-colors shrink-0 disabled:opacity-60" />
                 </template>
               </div>
             </div>
             <p v-if="!(selectedPlanet.moons ?? []).length" class="text-sm text-indigo-600 italic">None</p>
           </div>
-          <div class="flex gap-2">
+          <div v-if="isAdmin" class="flex gap-2">
             <input v-model="newMoonName" type="text" placeholder="Moon name…"
               class="flex-1 bg-surface-700 border border-surface-600 rounded-lg px-2 py-1 text-xs text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors"
               @keydown.enter="addPanelMoon" />
@@ -532,7 +541,7 @@
         <div class="px-5 py-4 border-b border-surface-700">
           <div class="flex items-center justify-between mb-3">
             <p class="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest">Orbit Events</p>
-            <button class="text-xs text-indigo-500 hover:text-indigo-300 transition-colors" @click="orbitEventsEditing = !orbitEventsEditing">
+            <button v-if="isAdmin" class="text-xs text-indigo-500 hover:text-indigo-300 transition-colors" @click="orbitEventsEditing = !orbitEventsEditing">
               {{ orbitEventsEditing ? 'Done' : 'Edit' }}
             </button>
           </div>
@@ -677,6 +686,7 @@ const { systems, updateSystemMembers, setSystemName, setSystemBodyName, setSyste
 const { selectedPlanetSlug, selectedSystemSlug, selectedBodyMemberIndex, zoomTarget, orbitEventPreview } = useMapState()
 const { events: timelineEvents, orderedEvents, addTimelineEvent, updateTimelineEvent, resolvedYearStart, timelineDraftToPatch, emptyTimelineDraft } = useTimelineEvents()
 const { books } = useCosmere()
+const { isAdmin } = useAuthState()
 
 // ── Derived state ────────────────────────────────────────────────────────────
 
@@ -730,6 +740,7 @@ const systemNameDraft = ref('')
 const systemNameInputRef = ref(null)
 watch(selectedSystemSlug, () => { systemNameEditing.value = false })
 function startSystemNameEdit() {
+  if (!isAdmin.value) return
   systemNameDraft.value = selectedSystem.value?.name ?? ''
   systemNameEditing.value = true
   nextTick(() => systemNameInputRef.value?.focus())
@@ -754,6 +765,7 @@ watch(selectedSystemSlug, () => {
   starSizeEditing.value = false
 })
 function startStarNameEdit() {
+  if (!isAdmin.value) return
   starNameDraft.value = selectedSystem.value?.star_name ?? ''
   starNameEditing.value = true
 }
@@ -762,6 +774,7 @@ async function saveStarName() {
   starNameEditing.value = false
 }
 function startStarColorEdit() {
+  if (!isAdmin.value) return
   starColorDraft.value = (selectedSystem.value?.star_color ?? '#ffcc44').replace('#', '')
   starColorEditing.value = true
 }
@@ -771,6 +784,7 @@ async function saveStarColor() {
   starColorEditing.value = false
 }
 function startStarSizeEdit() {
+  if (!isAdmin.value) return
   starSizeDraft.value = String(selectedSystem.value?.star_size ?? 1)
   starSizeEditing.value = true
 }
@@ -787,6 +801,7 @@ const systemWikiDraft = ref('')
 const systemWikiInputRef = ref(null)
 watch(selectedSystemSlug, () => { systemWikiEditing.value = false })
 function startSystemWikiEdit() {
+  if (!isAdmin.value) return
   systemWikiDraft.value = selectedSystem.value?.wiki ?? ''
   systemWikiEditing.value = true
   nextTick(() => systemWikiInputRef.value?.focus())
@@ -805,6 +820,7 @@ watch(selectedSystemSlug, () => {
   selectedBodyMemberIndex.value = null
 })
 function startSystemBodyNameEdit(index, currentName) {
+  if (!isAdmin.value) return
   systemBodyNameDraft.value = currentName
   systemBodyNameEditing.value = index
 }
@@ -827,6 +843,7 @@ watch(selectedBodyMemberIndex, () => {
   bodyColorEditing.value = false
 })
 function startBodyOrbitEdit() {
+  if (!isAdmin.value) return
   bodyOrbitDraft.value = String(selectedBodyMember.value?.orbit_distance ?? '')
   bodyOrbitEditing.value = true
 }
@@ -836,6 +853,7 @@ async function saveBodyOrbit() {
   bodyOrbitEditing.value = false
 }
 function startBodySizeEdit() {
+  if (!isAdmin.value) return
   const isStar = selectedBodyMember.value?.type === 'star'
   bodySizeDraft.value = String(selectedBodyMember.value?.size ?? (isStar ? 0.5 : 60))
   bodySizeEditing.value = true
@@ -847,6 +865,7 @@ async function saveBodySize() {
   bodySizeEditing.value = false
 }
 function startBodyColorEdit() {
+  if (!isAdmin.value) return
   bodyColorDraft.value = (selectedBodyMember.value?.color ?? '#bb88ff').replace('#', '')
   bodyColorEditing.value = true
 }
@@ -859,16 +878,19 @@ async function saveBodyColor() {
 // ── Orbit change handlers ─────────────────────────────────────────────────────
 
 async function onBodyOrbitChange(memberIndex, event) {
+  if (!isAdmin.value) return
   const val = parseInt(event.target.value, 10)
   await setSystemBodyOrbitDistance(selectedSystem.value.slug, memberIndex, isNaN(val) || val <= 0 ? null : val)
 }
 
 async function onPlanetOrbitChange(slug, event) {
+  if (!isAdmin.value) return
   const val = parseInt(event.target.value, 10)
   await setPlanetOrbitDistance(slug, isNaN(val) || val <= 0 ? null : val)
 }
 
 async function onLagrangeChange(memberIndex, event) {
+  if (!isAdmin.value) return
   const val = event.target.value
   const lp = val ? parseInt(val, 10) : null
   await setSystemMemberLagrangePoint(selectedSystem.value.slug, memberIndex, lp)
@@ -882,6 +904,7 @@ const newStarBodyName = ref('')
 watch(selectedSystemSlug, () => { newStarBodyName.value = '' })
 
 async function moveSystemMember(i, dir) {
+  if (!isAdmin.value) return
   const members = [...(selectedSystem.value.members ?? [])]
   const j = i + dir
   ;[members[i], members[j]] = [members[j], members[i]]
@@ -889,11 +912,13 @@ async function moveSystemMember(i, dir) {
 }
 
 async function removeSystemMember(i) {
+  if (!isAdmin.value) return
   const members = (selectedSystem.value.members ?? []).filter((_, idx) => idx !== i)
   await updateSystemMembers(selectedSystem.value.slug, members)
 }
 
 async function addSystemPlanet() {
+  if (!isAdmin.value) return
   const name = newPlanetName.value.trim()
   if (!name) return
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -904,6 +929,7 @@ async function addSystemPlanet() {
 }
 
 async function addSystemBody() {
+  if (!isAdmin.value) return
   const entry = { type: newBodyType.value }
   if (newBodyType.value === 'star' && newStarBodyName.value.trim()) {
     entry.name = newStarBodyName.value.trim()
@@ -920,6 +946,7 @@ const planetNameDraft = ref('')
 const planetNameInputRef = ref(null)
 watch(selectedPlanetSlug, () => { planetNameEditing.value = false })
 function startPlanetNameEdit() {
+  if (!isAdmin.value) return
   planetNameDraft.value = selectedPlanet.value?.name ?? ''
   planetNameEditing.value = true
   nextTick(() => planetNameInputRef.value?.focus())
@@ -936,6 +963,7 @@ const sizeEditing = ref(false)
 const sizeDraft = ref('')
 watch(selectedPlanetSlug, () => { sizeEditing.value = false })
 function startSizeEdit() {
+  if (!isAdmin.value) return
   sizeDraft.value = String(selectedPlanet.value?.size_multiplier ?? 1)
   sizeEditing.value = true
 }
@@ -951,6 +979,7 @@ const orbitDistanceEditing = ref(false)
 const orbitDistanceDraft = ref('')
 watch(selectedPlanetSlug, () => { orbitDistanceEditing.value = false })
 function startOrbitDistanceEdit() {
+  if (!isAdmin.value) return
   const v = selectedPlanet.value?.orbit_distance
   orbitDistanceDraft.value = v != null ? String(v) : ''
   orbitDistanceEditing.value = true
@@ -964,6 +993,7 @@ async function saveOrbitDistance() {
 // ── Planet type ───────────────────────────────────────────────────────────────
 
 async function setPlanetType(type) {
+  if (!isAdmin.value) return
   const slug = selectedPlanet.value.slug
   await setPlanetGasGiant(slug, type === 'gas_giant')
   await setPlanetDwarfPlanet(slug, type === 'dwarf_planet')
@@ -978,6 +1008,7 @@ const colorDraft = ref('')
 const hexInputRef = ref(null)
 watch(selectedPlanetSlug, () => { colorEditing.value = false })
 function startColorEdit() {
+  if (!isAdmin.value) return
   colorDraft.value = (selectedPlanet.value?.color ?? '').replace('#', '')
   colorEditing.value = true
   nextTick(() => hexInputRef.value?.focus())
@@ -995,6 +1026,7 @@ const wikiDraft = ref('')
 const wikiInputRef = ref(null)
 watch(selectedPlanetSlug, () => { wikiEditing.value = false })
 function startWikiEdit() {
+  if (!isAdmin.value) return
   wikiDraft.value = selectedPlanet.value?.wiki ?? ''
   wikiEditing.value = true
   nextTick(() => wikiInputRef.value?.focus())
@@ -1010,6 +1042,7 @@ const newMoonName = ref('')
 watch(selectedPlanetSlug, () => { newMoonName.value = '' })
 
 function addPanelMoon() {
+  if (!isAdmin.value) return
   const name = newMoonName.value.trim()
   if (!name) return
   updatePlanetMoons(selectedPlanet.value.slug, [...(selectedPlanet.value.moons ?? []), name])
@@ -1020,6 +1053,7 @@ const moonRenaming = ref(null)
 const moonRenameDraft = ref('')
 watch(selectedPlanetSlug, () => { moonRenaming.value = null })
 function startMoonRename(moonName, index) {
+  if (!isAdmin.value) return
   moonRenameDraft.value = moonName
   moonRenaming.value = index
 }
@@ -1030,6 +1064,7 @@ async function saveMoonRename(oldName, index) {
 }
 
 async function onMoonOrbitChange(moonName, event) {
+  if (!isAdmin.value) return
   const val = parseInt(event.target.value, 10)
   const distances = { ...(selectedPlanet.value.moon_orbit_distances ?? {}) }
   if (isNaN(val) || val <= 0) {
@@ -1041,10 +1076,12 @@ async function onMoonOrbitChange(moonName, event) {
 }
 
 function onMoonOrbitTypeChange(moonName, event) {
+  if (!isAdmin.value) return
   setPlanetMoonOrbitType(selectedPlanet.value.slug, moonName, event.target.value)
 }
 
 async function onSatelliteThicknessChange(moonName, event) {
+  if (!isAdmin.value) return
   const val = parseInt(event.target.value, 10)
   const thicknesses = { ...(selectedPlanet.value.satellite_thicknesses ?? {}) }
   if (isNaN(val) || val <= 0) {
@@ -1056,6 +1093,7 @@ async function onSatelliteThicknessChange(moonName, event) {
 }
 
 async function onSatelliteTiltChange(moonName, event) {
+  if (!isAdmin.value) return
   const val = parseInt(event.target.value, 10)
   const tilts = { ...(selectedPlanet.value.satellite_tilts ?? {}) }
   if (isNaN(val)) {
@@ -1140,6 +1178,7 @@ function systemForPlanet(slug) {
 }
 
 async function onTriggerChange(id, event) {
+  if (!isAdmin.value) return
   const value = event.target.value
   if (value === '__new__') {
     creatingEventFor.value = id
@@ -1166,6 +1205,7 @@ async function onTriggerChange(id, event) {
 }
 
 async function createLinkedEvent() {
+  if (!isAdmin.value) return
   createLinkedEventStatus.value = 'running'
   createLinkedEventError.value = ''
   try {
@@ -1195,6 +1235,7 @@ function setPreview(id, showAfter) {
 }
 
 async function deleteOrbitEvent(id) {
+  if (!isAdmin.value) return
   const events = (selectedPlanet.value.orbit_events ?? []).filter(e => e.id !== id)
   await setPlanetOrbitEvents(selectedPlanet.value.slug, events)
   if (previewingId.value === id) {
@@ -1210,6 +1251,7 @@ async function deleteOrbitEvent(id) {
 }
 
 async function addOrbitEvent() {
+  if (!isAdmin.value) return
   const entry = { id: crypto.randomUUID() }
   let hasChange = false
 

@@ -8,6 +8,7 @@
         </p>
       </div>
       <button
+        v-if="isAdmin"
         type="button"
         class="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-surface-700 hover:bg-surface-600 text-indigo-300 hover:text-blue-100 transition-colors"
         @click="editing = !editing"
@@ -320,6 +321,7 @@ const {
   updateTimelineEvent,
 } = useTimelineEvents();
 const { systems, init: initSystems } = useSystemSettings();
+const { isAdmin } = useAuthState();
 
 await initEntities();
 await initEvents();
@@ -356,6 +358,7 @@ function systemName(slug) {
 }
 
 function onColorChange(entity, hex) {
+  if (!isAdmin.value) return;
   const normalized = "#" + hex.replace("#", "");
   if (!isValidHexColor(normalized)) return;
   setEntityColor(entity.slug, normalized);
@@ -375,6 +378,7 @@ function triggerFor(statusEventId) {
 }
 
 async function onTriggerChange(entity, statusEventId, newEventSlug) {
+  if (!isAdmin.value) return;
   const currentlyLinked = timelineEvents.value.filter((e) =>
     (e.orbit_event_ids ?? []).includes(statusEventId),
   );
@@ -400,6 +404,7 @@ function draftFor(slug) {
 }
 
 async function addStatusEvent(entity) {
+  if (!isAdmin.value) return;
   const draft = draftFor(entity.slug);
   const status = draft.status.trim();
   if (!status || !draft.eventSlug) return;
@@ -418,6 +423,7 @@ async function addStatusEvent(entity) {
 }
 
 async function deleteStatusEvent(entity, id) {
+  if (!isAdmin.value) return;
   await setEntityStatusEvents(
     entity.slug,
     (entity.status_events ?? []).filter((se) => se.id !== id),
@@ -439,6 +445,7 @@ function locationDraftFor(slug) {
 }
 
 async function addLocationEvent(entity) {
+  if (!isAdmin.value) return;
   const draft = locationDraftFor(entity.slug);
   if (!draft.locationSlug || !draft.eventSlug) return;
   const id = crypto.randomUUID();
@@ -456,6 +463,7 @@ async function addLocationEvent(entity) {
 }
 
 async function deleteLocationEvent(entity, id) {
+  if (!isAdmin.value) return;
   await setEntityLocationEvents(
     entity.slug,
     (entity.location_events ?? []).filter((le) => le.id !== id),
@@ -474,6 +482,7 @@ const newEntityDraft = reactive({ slug: "", name: "", type: "shard", status: "un
 const addEntityStatus = ref("idle");
 const addEntityError = ref("");
 async function doAddEntity() {
+  if (!isAdmin.value) return;
   addEntityStatus.value = "running";
   addEntityError.value = "";
   try {

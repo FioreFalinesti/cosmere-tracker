@@ -7,6 +7,7 @@ export default defineNuxtConfig({
       firebaseStorageBucket: '',
       firebaseMessagingSenderId: '',
       firebaseAppId: '',
+      adminEmails: '',
     },
   },
   compatibilityDate: '2025-07-15',

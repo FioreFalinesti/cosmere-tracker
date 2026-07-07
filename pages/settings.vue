@@ -24,7 +24,7 @@
     <section class="mb-10">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest">Timeline Events</h2>
-        <div class="flex items-center gap-2">
+        <div v-if="isAdmin" class="flex items-center gap-2">
           <button type="button" class="text-xs text-indigo-400 hover:text-blue-100 transition-colors" @click="doResort">Resort by year</button>
           <span v-if="resortStatus === 'done'" class="text-xs text-green-400">Done</span>
           <span v-else-if="resortStatus === 'error'" class="text-xs text-red-400">{{ resortError }}</span>
@@ -32,6 +32,7 @@
       </div>
       <div class="space-y-3">
         <TimelineEventForm
+          v-if="isAdmin"
           :draft="newDraft"
           :books="books"
           :systems="systems"
@@ -44,7 +45,7 @@
 
         <div class="space-y-1 pt-2 border-t border-surface-700">
           <template v-for="(ev, i) in orderedEvents" :key="ev.slug">
-            <div v-if="editingSlug === ev.slug" class="py-3 border-b border-surface-700">
+            <div v-if="isAdmin && editingSlug === ev.slug" class="py-3 border-b border-surface-700">
               <TimelineEventForm
                 :draft="editDraft"
                 :books="books"
@@ -63,7 +64,7 @@
               v-else
               class="py-1 rounded"
               :class="dragSlug === ev.slug ? 'opacity-40' : ''"
-              draggable="true"
+              :draggable="isAdmin"
               @dragstart="dragSlug = ev.slug"
               @dragover.prevent
               @dragenter.prevent
@@ -71,16 +72,18 @@
               @dragend="dragSlug = null"
             >
               <div class="flex items-center gap-2">
-                <span class="text-indigo-600 cursor-grab shrink-0" title="Drag to reorder">⠿</span>
-                <div class="flex flex-col shrink-0">
+                <span v-if="isAdmin" class="text-indigo-600 cursor-grab shrink-0" title="Drag to reorder">⠿</span>
+                <div v-if="isAdmin" class="flex flex-col shrink-0">
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === 0" @click="moveEvent(ev.slug, -1)">▲</button>
                   <button class="text-indigo-500 hover:text-blue-100 disabled:opacity-30 disabled:hover:text-indigo-500 leading-none transition-colors" :disabled="i === orderedEvents.length - 1" @click="moveEvent(ev.slug, 1)">▼</button>
                 </div>
                 <span class="text-xs font-mono text-indigo-400 w-24 shrink-0">{{ ev.estimated ? '~' : '' }}{{ resolvedYearStart(ev) != null ? resolvedYearStart(ev) : '—' }}{{ ev.event_type === 'range' && resolvedYearEnd(ev) != null ? '–' + resolvedYearEnd(ev) : '' }}</span>
                 <span class="flex-1 text-sm text-blue-100 truncate">{{ ev.title }}</span>
                 <span v-if="ev.book_slug" class="text-xs text-indigo-500 truncate">{{ bookTitle(ev.book_slug) }}</span>
-                <button class="text-xs text-indigo-400 hover:text-blue-100 transition-colors shrink-0" @click="startEditEvent(ev)">Edit</button>
-                <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="confirmDeleteEvent(ev)">×</button>
+                <template v-if="isAdmin">
+                  <button class="text-xs text-indigo-400 hover:text-blue-100 transition-colors shrink-0" @click="startEditEvent(ev)">Edit</button>
+                  <button class="text-red-400 hover:text-red-300 text-lg leading-none transition-colors shrink-0" @click="confirmDeleteEvent(ev)">×</button>
+                </template>
               </div>
               <p v-if="ev.description" class="text-xs text-indigo-500 mt-0.5 ml-[4.5rem]">{{ ev.description }}</p>
               <div v-if="ev.entity_slugs?.length" class="flex flex-wrap gap-1 mt-0.5 ml-[4.5rem]">
@@ -93,7 +96,7 @@
       </div>
     </section>
 
-    <section>
+    <section v-if="isAdmin">
       <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Admin</h2>
       <div class="rounded-lg border border-amber-700/40 bg-amber-950/20 p-4 space-y-3">
         <p class="text-xs text-amber-400/80">Advanced tools that write data directly — double-check inputs before running.</p>
@@ -127,6 +130,7 @@ const { books, load: loadBooks } = useCosmere()
 const { entities, init: initEntities } = useEntitySettings()
 const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, resolvedYearStart, resolvedYearEnd, timelineDraftToPatch, emptyTimelineDraft } = useTimelineEvents()
 const { timelineNewestFirst, initTimelineOrder, setTimelineNewestFirst } = useTimelinePrefs()
+const { isAdmin } = useAuthState()
 await Promise.all([init(), initPlanets(), loadBooks(), initEvents(), initEntities()])
 initTimelineOrder()
 
@@ -141,6 +145,7 @@ const sortedSystems = computed(() =>
 )
 
 async function doClone() {
+  if (!isAdmin.value) return
   cloneStatus.value = 'running'
   cloneError.value = ''
   try {
@@ -154,6 +159,7 @@ async function doClone() {
 
 const dragSlug = ref(null)
 async function onDropEvent(toIndex) {
+  if (!isAdmin.value) return
   const slug = dragSlug.value
   dragSlug.value = null
   const list = [...orderedEvents.value]
@@ -165,6 +171,7 @@ async function onDropEvent(toIndex) {
 }
 
 async function confirmDeleteEvent(ev) {
+  if (!isAdmin.value) return
   if (!window.confirm(`Delete "${ev.title}"? This can't be undone.`)) return
   await deleteTimelineEvent(ev.slug)
 }
@@ -180,6 +187,7 @@ function entityName(slug) {
 const resortStatus = ref('idle')
 const resortError = ref('')
 async function doResort() {
+  if (!isAdmin.value) return
   resortStatus.value = 'running'
   resortError.value = ''
   try {
@@ -200,6 +208,7 @@ const addEventStatus = ref('idle')
 const addEventError = ref('')
 
 async function doAddEvent() {
+  if (!isAdmin.value) return
   addEventStatus.value = 'running'
   addEventError.value = ''
   try {
@@ -218,6 +227,7 @@ const editStatus = ref('idle')
 const editError = ref('')
 
 function startEditEvent(ev) {
+  if (!isAdmin.value) return
   editingSlug.value = ev.slug
   Object.assign(editDraft, {
     type: ev.event_type,
@@ -247,6 +257,7 @@ function cancelEditEvent() {
 }
 
 async function saveEditEvent() {
+  if (!isAdmin.value) return
   editStatus.value = 'running'
   editError.value = ''
   try {
