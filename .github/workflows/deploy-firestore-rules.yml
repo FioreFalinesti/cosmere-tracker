@@ -1,0 +1,25 @@
+name: Deploy Firestore Rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+  workflow_dispatch:
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write service account credentials
+        run: echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/gcp-key.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Firestore rules
+        run: npx firebase-tools@13 deploy --only firestore:rules --project cosmere-tracker-2e0e6
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
