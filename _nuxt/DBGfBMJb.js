@@ -1,1 +1,0 @@
-import{D as l}from"./DPACrBJ4.js";const i="cosmere-tracker:timeline-newest-first",e=l(!1);let r=!1;function o(){function n(){if(!r){try{e.value=localStorage.getItem(i)==="true"}catch{e.value=!1}r=!0}}function s(t){e.value=t,localStorage.setItem(i,String(t))}return{timelineNewestFirst:e,initTimelineOrder:n,setTimelineNewestFirst:s}}export{o as u};
