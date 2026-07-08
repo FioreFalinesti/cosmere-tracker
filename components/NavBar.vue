@@ -23,73 +23,58 @@
         >
           {{ link.label }}
         </NuxtLink>
-        <div ref="menuRef" class="relative">
+        <UDropdownMenu :items="menuGroups" :content="{ align: 'end' }" :ui="{ content: 'w-56' }">
           <button
             type="button"
-            class="flex items-center transition-colors"
+            class="flex items-center transition-colors cursor-pointer"
             :class="editPositions ? 'text-gray-100 hover:text-white' : 'text-indigo-300 hover:text-blue-100'"
             title="Menu"
-            @click="menuOpen = !menuOpen"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <div
-            v-if="menuOpen"
-            class="absolute right-0 mt-2 w-48 rounded-lg border border-surface-700 bg-surface-800 shadow-lg py-1"
-          >
-            <div class="flex items-center gap-2 px-3 py-2 border-b border-surface-700 mb-1">
+
+          <template #account>
+            <div class="flex items-center gap-2 w-full">
               <template v-if="currentUser">
-                <img v-if="currentUser.photoURL" :src="currentUser.photoURL" class="w-6 h-6 rounded-full shrink-0" />
+                <img v-if="currentUser.photoURL" :src="currentUser.photoURL" referrerpolicy="no-referrer" class="w-6 h-6 rounded-full shrink-0" />
                 <span class="flex-1 text-xs text-indigo-300 truncate">{{ currentUser.displayName || currentUser.email }}</span>
-                <button type="button" class="text-xs text-indigo-400 hover:text-red-400 transition-colors shrink-0" @click="logout">Sign out</button>
+                <button type="button" class="text-xs text-indigo-400 hover:text-red-400 transition-colors shrink-0 cursor-pointer" @click="logout">Sign out</button>
               </template>
-              <button
-                v-else
-                type="button"
-                class="w-full text-left text-sm text-indigo-300 hover:text-blue-100 transition-colors"
-                @click="login"
-              >
+              <button v-else type="button" class="w-full text-left text-sm text-indigo-300 hover:text-blue-100 transition-colors cursor-pointer" @click="login">
                 Sign in with Google
               </button>
             </div>
-            <NuxtLink
-              to="/settings"
-              class="flex items-center gap-2 px-3 py-2 text-sm text-indigo-300 hover:text-blue-100 hover:bg-surface-700 transition-colors"
-              active-class="text-accent-400"
-              @click="menuOpen = false"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Settings
-            </NuxtLink>
-            <div v-if="route.path === '/' && isAdmin" class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-indigo-300 border-t border-surface-700 mt-1 pt-2">
+          </template>
+
+          <template #settings-leading>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </template>
+
+          <template #admin-leading>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </template>
+
+          <template #edit-positions>
+            <div class="flex items-center justify-between w-full gap-2">
               <span>Edit Positions</span>
-              <button
-                type="button"
-                class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none shrink-0"
-                :class="editPositions ? 'bg-accent-600' : 'bg-surface-600'"
-                @click="toggleEditPositions"
-              >
-                <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="editPositions ? 'translate-x-5' : 'translate-x-1'" />
-              </button>
+              <USwitch :model-value="editPositions" @update:model-value="toggleEditPositions" />
             </div>
-            <div class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-indigo-300 border-t border-surface-700 mt-1 pt-2">
+          </template>
+
+          <template #sidebar-toggle>
+            <div class="flex items-center justify-between w-full gap-2">
               <span>New Sidebar UI</span>
-              <button
-                type="button"
-                class="relative inline-flex items-center h-5 w-9 rounded-full transition-colors focus:outline-none shrink-0"
-                :class="nuxtUiTimeline ? 'bg-accent-600' : 'bg-surface-600'"
-                @click="setNuxtUiTimeline(!nuxtUiTimeline)"
-              >
-                <span class="inline-block w-3 h-3 bg-white rounded-full shadow transition-transform" :class="nuxtUiTimeline ? 'translate-x-5' : 'translate-x-1'" />
-              </button>
+              <USwitch :model-value="nuxtUiTimeline" @update:model-value="setNuxtUiTimeline" />
             </div>
-          </div>
-        </div>
+          </template>
+        </UDropdownMenu>
       </div>
     </div>
   </nav>
@@ -110,9 +95,6 @@ const NAV_LINKS = [
   { to: '/magic-systems', label: 'Magic Systems' },
 ]
 
-const menuOpen = ref(false)
-const menuRef = ref(null)
-
 // A toggle only has an on/off state, so there's no room for a separate
 // Cancel (discard changes) action here — turning it off saves, same as the
 // old sidebar button's Save action.
@@ -121,12 +103,25 @@ function toggleEditPositions() {
   else startEdit()
 }
 
-function onClickOutside(e) {
-  if (menuOpen.value && menuRef.value && !menuRef.value.contains(e.target)) {
-    menuOpen.value = false
-  }
-}
+// Prevent the dropdown from auto-closing when interacting with these rows —
+// they're toggles/actions, not navigation, so the menu should stay open.
+const stayOpen = { onSelect: (e) => e.preventDefault() }
 
-onMounted(() => document.addEventListener('click', onClickOutside))
-onUnmounted(() => document.removeEventListener('click', onClickOutside))
+const menuGroups = computed(() => {
+  const groups = [[{ slot: 'account', ...stayOpen }]]
+
+  const links = []
+  if (currentUser.value) {
+    links.push({ slot: 'settings', label: 'Settings', to: '/settings' })
+    links.push({ slot: 'admin', label: 'Admin', to: '/admin' })
+  }
+  if (links.length) groups.push(links)
+
+  const toggles = []
+  if (route.path === '/' && isAdmin.value) toggles.push({ slot: 'edit-positions', ...stayOpen })
+  toggles.push({ slot: 'sidebar-toggle', ...stayOpen })
+  groups.push(toggles)
+
+  return groups
+})
 </script>
