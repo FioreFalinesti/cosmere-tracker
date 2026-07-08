@@ -343,7 +343,7 @@ watch(zoomTarget, target => {
       const cw = window.innerWidth - SIDEBAR_WIDTH
       const ch = window.innerHeight - 56
       const availableW = cw * 0.8  // account for panel
-      const zoom = Math.min(4, Math.max(0.5, (availableW * 0.3) / pSize))
+      const zoom = Math.min(3, Math.max(0.5, (availableW * 0.2) / pSize))
       const DURATION = 600
       // Target where the planet WILL be once the pan finishes, not where it
       // is right now — it keeps orbiting throughout the pan. Falls back to
