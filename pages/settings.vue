@@ -124,6 +124,8 @@
 </template>
 
 <script setup>
+definePageMeta({ middleware: 'auth' })
+
 const { systems, init, cloneSystem } = useSystemSettings()
 const { planets, init: initPlanets } = usePlanetSettings()
 const { books, load: loadBooks } = useCosmere()
