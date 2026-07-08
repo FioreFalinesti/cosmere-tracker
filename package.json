@@ -17,7 +17,7 @@
     "element-plus": "^2.14.2",
     "firebase": "^12.14.0",
     "fuse.js": "^7.0.0",
-    "nuxt": "3.16.2",
+    "nuxt": "^3.21.8",
     "tailwindcss": "^4.3.2",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"

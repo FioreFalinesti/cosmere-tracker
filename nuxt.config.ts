@@ -13,10 +13,6 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
   devtools: { enabled: false },
-  // Works around a Nuxt regression where `nuxt generate` fails whenever
-  // app.baseURL isn't '/' (only true in CI, for the GitHub Pages subpath) —
-  // https://github.com/nuxt/nuxt/issues/30367
-  experimental: { appManifest: false },
   modules: ['@nuxt/ui'],
   css: [
     '@vue-flow/core/dist/style.css',
