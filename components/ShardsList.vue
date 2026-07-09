@@ -1,6 +1,5 @@
 <template>
   <div class="flex-1 overflow-y-auto px-3 py-3">
-    <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest px-2 mb-3">Shards</h2>
     <div v-if="activeShards.length" class="space-y-1">
       <div
         v-for="entity in activeShards"

@@ -1,6 +1,5 @@
 <template>
   <div class="flex-1 overflow-y-auto px-3 py-3">
-    <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest px-2 mb-3">Timeline</h2>
     <UTimeline
       v-if="timelineItems.length"
       :items="timelineItems"
@@ -33,7 +32,19 @@
         <div>
           <p v-if="item.description" class="text-xs text-indigo-500">{{ item.description }}</p>
           <div v-if="item.entitySlugs?.length" class="flex flex-wrap gap-1 mt-1">
-            <span v-for="slug in item.entitySlugs" :key="slug" class="text-[10px] px-1.5 py-0.5 rounded bg-surface-700 text-indigo-300">{{ entityName(slug) }}</span>
+            <span
+              v-for="slug in item.entitySlugs"
+              :key="slug"
+              class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-surface-700 text-indigo-300"
+            >
+              <ShardIcon v-if="entityFor(slug)?.type === 'shard' && entityFor(slug)?.color" :color="entityFor(slug).color" :size="12" class="shrink-0" />
+              <span
+                v-else-if="entityFor(slug)?.color"
+                class="w-1.5 h-1.5 rounded-full shrink-0"
+                :style="{ background: entityFor(slug).color }"
+              />
+              {{ entityName(slug) }}
+            </span>
           </div>
           <div v-if="item.subEvents?.length" class="mt-2 pl-3 border-l border-surface-700 space-y-2">
             <div v-for="(sub, i) in item.subEvents" :key="i">
@@ -57,8 +68,12 @@ await initEvents()
 initCurrentEvent()
 initEntities()
 
+function entityFor(slug) {
+  return entities.value.find(e => e.slug === slug)
+}
+
 function entityName(slug) {
-  return entities.value.find(e => e.slug === slug)?.name ?? slug
+  return entityFor(slug)?.name ?? slug
 }
 
 function dateLabel(ev) {
