@@ -49,7 +49,7 @@ export function resolveLocation(events, baselineSlug) {
 // A Shard whose resolved status lands here is no longer a distinct active
 // Shard from that point on — splintered/destroyed (killed), or combined into
 // a new fused Shard (e.g. Ruin + Preservation -> Harmony) — so it drops out
-// of any "currently held Shards" view (map badges, Characters page filter).
+// of any "currently held Shards" view (map badges).
 export const TERMINAL_SHARD_STATUSES = ['splintered', 'destroyed', 'combined']
 
 // A Shard/splinter-remnant that's formed by combination rather than present

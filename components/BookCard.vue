@@ -8,17 +8,12 @@
         {{ book.title }}
       </h3>
     </div>
-    <p class="text-xs text-indigo-400 mb-3">{{ book.series }} · {{ book.published_on?.slice(0, 4) }}</p>
-    <p class="text-sm text-blue-200">
-      <span class="font-medium text-blue-100">{{ characterCount }}</span>
-      character{{ characterCount !== 1 ? 's' : '' }}
-    </p>
+    <p class="text-xs text-indigo-400">{{ book.series }} · {{ book.published_on?.slice(0, 4) }}</p>
   </NuxtLink>
 </template>
 
 <script setup>
 defineProps({
   book: { type: Object, required: true },
-  characterCount: { type: Number, required: true },
 })
 </script>

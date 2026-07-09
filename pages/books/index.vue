@@ -10,17 +10,12 @@
         v-for="book in books"
         :key="book.slug"
         :book="book"
-        :character-count="characterCountFor(book.slug)"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const { books, appearances, load } = useCosmere()
+const { books, load } = useCosmere()
 await load()
-
-function characterCountFor(bookId: string) {
-  return appearances.value.filter(a => a.bookId === bookId).length
-}
 </script>

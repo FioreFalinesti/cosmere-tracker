@@ -5,12 +5,22 @@
     :class="collapsed ? 'w-8' : ''"
     :style="collapsed ? {} : { width: `${SIDEBAR_WIDTH}px` }"
   >
-    <div v-if="!collapsed" class="shrink-0 h-10 flex items-center">
+    <div class="shrink-0 h-10 flex items-center">
       <button
         type="button"
-        class="px-3 py-2 text-sm font-medium text-indigo-400 border border-surface-600 hover:text-blue-100 hover:bg-surface-800 rounded transition-colors cursor-pointer"
-        @click="view = view === 'timeline' ? 'shards' : 'timeline'"
-      >{{ view === 'timeline' ? 'Shards' : '« Back to Timeline' }}</button>
+        class="h-10 w-8 shrink-0 flex items-center justify-center text-lg font-bold text-indigo-500 hover:text-blue-100 hover:bg-surface-800 transition-colors cursor-pointer"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="collapsed = !collapsed"
+      >{{ collapsed ? '»' : '«' }}</button>
+
+      <UTabs
+        v-if="!collapsed"
+        v-model="view"
+        :items="viewTabs"
+        orientation="horizontal"
+        variant="link"
+        :content="false"
+      />
     </div>
 
     <div v-if="!collapsed" class="flex-1 min-h-0 overflow-hidden">
@@ -29,12 +39,6 @@
         </div>
       </div>
     </div>
-
-    <button
-      class="mt-auto shrink-0 h-10 w-8 flex items-center justify-center text-indigo-500 hover:text-blue-100 hover:bg-surface-800 transition-colors cursor-pointer"
-      :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-      @click="collapsed = !collapsed"
-    >{{ collapsed ? '»' : '«' }}</button>
   </aside>
 </template>
 
@@ -46,14 +50,19 @@ initNuxtUiTimeline()
 const route = useRoute()
 
 // Settings page has its own full editable event list — showing the read-only
-// timeline here too would just duplicate it. /shards and /characters don't
-// have their own way to change which event is "current", so they need it.
-const SIDEBAR_LIST_PATHS = ['/', '/shards', '/characters']
+// timeline here too would just duplicate it. /shards doesn't have its own
+// way to change which event is "current", so it needs it.
+const SIDEBAR_LIST_PATHS = ['/', '/shards']
 const showSidebarLists = computed(() => SIDEBAR_LIST_PATHS.includes(route.path))
 const hasContent = showSidebarLists
 
 const collapsed = ref(false)
 const view = ref('timeline')
+
+const viewTabs = [
+  { label: 'Timeline', value: 'timeline' },
+  { label: 'Shards', value: 'shards' },
+]
 
 initTimelineOrder()
 </script>

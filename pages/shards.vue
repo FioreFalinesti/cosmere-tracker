@@ -70,6 +70,7 @@
           v-for="entity in group.items"
           :key="entity.slug"
           class="bg-surface-800 border border-surface-700 rounded-xl p-4"
+          :class="{ 'opacity-50': isEntityDead(entity) }"
         >
           <template v-if="editing">
             <input
@@ -296,7 +297,7 @@
 </template>
 
 <script setup>
-import { resolveStatus } from "~/utils/timelineFieldResolvers";
+import { resolveStatus, TERMINAL_SHARD_STATUSES, NOT_YET_FORMED_SHARD_STATUSES } from "~/utils/timelineFieldResolvers";
 import { isValidHexColor } from "~/utils/colorUtils";
 
 const {
@@ -341,12 +342,27 @@ const groupedEntities = computed(() =>
     label: TYPE_LABELS[type],
     items: entities.value
       .filter((e) => e.type === type)
+      .filter((e) => editing.value || !isNotYetFormed(e))
       .sort((a, b) => a.name.localeCompare(b.name)),
   })).filter((g) => g.items.length),
 );
 
 function statusOf(entity) {
   return resolveStatus(entity.status_events ?? [], entity.status);
+}
+
+// Mirrors the (now-removed) Characters page's "deceased" treatment: a Shard
+// that's splintered/destroyed/combined is no longer a distinct active Shard,
+// but still shown (dimmed) rather than hidden outright.
+function isEntityDead(entity) {
+  return TERMINAL_SHARD_STATUSES.includes(statusOf(entity));
+}
+
+// Unlike "dead", a not-yet-formed entity (e.g. Harmony pre-Catacendre) hasn't
+// been introduced in-story at all, so it's hidden entirely rather than
+// dimmed — except in Edit mode, where an admin still needs access to configure it.
+function isNotYetFormed(entity) {
+  return NOT_YET_FORMED_SHARD_STATUSES.includes(statusOf(entity));
 }
 
 function entityName(slug) {

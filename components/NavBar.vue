@@ -90,7 +90,6 @@ const route = useRoute()
 const NAV_LINKS = [
   { to: '/', label: 'Map' },
   { to: '/books', label: 'Books' },
-  { to: '/characters', label: 'Characters' },
   { to: '/shards', label: 'Shards' },
   { to: '/magic-systems', label: 'Magic Systems' },
 ]
