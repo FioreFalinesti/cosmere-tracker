@@ -1,0 +1,1 @@
+import{af as s,k as u,ag as o,ah as n}from"./CyQpmjJ3.js";const c=s(async()=>{let e,t;const{currentUser:a,waitForAuth:r}=u();if([e,t]=o(()=>r()),await e,t(),!a.value)return n("/")});export{c as default};
