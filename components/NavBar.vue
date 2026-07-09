@@ -67,13 +67,6 @@
               <USwitch :model-value="editPositions" @update:model-value="toggleEditPositions" />
             </div>
           </template>
-
-          <template #sidebar-toggle>
-            <div class="flex items-center justify-between w-full gap-2">
-              <span>New Sidebar UI</span>
-              <USwitch :model-value="nuxtUiTimeline" @update:model-value="setNuxtUiTimeline" />
-            </div>
-          </template>
         </UDropdownMenu>
       </div>
     </div>
@@ -82,14 +75,11 @@
 
 <script setup>
 const { editPositions, startEdit, saveEdit } = useMapState()
-const { nuxtUiTimeline, initNuxtUiTimeline, setNuxtUiTimeline } = useTimelinePrefs()
 const { currentUser, isAdmin, login, logout } = useAuthState()
-initNuxtUiTimeline()
 const route = useRoute()
 
 const NAV_LINKS = [
   { to: '/', label: 'Map' },
-  { to: '/books', label: 'Books' },
   { to: '/shards', label: 'Shards' },
   { to: '/magic-systems', label: 'Magic Systems' },
 ]
@@ -116,10 +106,9 @@ const menuGroups = computed(() => {
   }
   if (links.length) groups.push(links)
 
-  const toggles = []
-  if (route.path === '/' && isAdmin.value) toggles.push({ slot: 'edit-positions', ...stayOpen })
-  toggles.push({ slot: 'sidebar-toggle', ...stayOpen })
-  groups.push(toggles)
+  if (route.path === '/' && isAdmin.value) {
+    groups.push([{ slot: 'edit-positions', ...stayOpen }])
+  }
 
   return groups
 })

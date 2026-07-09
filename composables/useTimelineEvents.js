@@ -211,13 +211,6 @@ export function isEventTriggerReached(triggerId) {
   return events.value.some(ev => (ev.orbit_event_ids ?? []).includes(triggerId) && isReached(ev))
 }
 
-// A book is "reached" once the timeline has revealed the event tied to it —
-// used to gate book/character spoilers the same way isEventTriggerReached
-// gates orbit/color changes.
-export function isBookReached(bookSlug) {
-  return events.value.some(ev => ev.book_slug === bookSlug && isReached(ev))
-}
-
 export function useTimelineEvents() {
   function initCurrentEvent() {
     if (currentEventInitialized) return
@@ -313,7 +306,7 @@ export function useTimelineEvents() {
   return {
     events, init, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, computeOrder,
     orderedEvents, sortedByYear, currentEvent, currentEventSlug, eventYear, resolvedYearStart, resolvedYearEnd,
-    isReached, isEventTriggerReached, isBookReached, initCurrentEvent, setCurrentEvent,
+    isReached, isEventTriggerReached, initCurrentEvent, setCurrentEvent,
     timelineDraftToPatch, emptyTimelineDraft,
   }
 }

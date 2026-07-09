@@ -96,6 +96,23 @@
       </div>
     </section>
 
+    <section v-if="isAdmin" class="mb-10">
+      <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Books</h2>
+      <div class="space-y-1">
+        <div
+          v-for="book in books"
+          :key="book.slug"
+          class="flex items-center gap-3 py-1.5 border-b border-surface-700 last:border-b-0"
+        >
+          <span class="text-xs font-mono text-indigo-400 w-8 shrink-0">#{{ book.release_order }}</span>
+          <span class="flex-1 text-sm text-blue-100 truncate">{{ book.title }}</span>
+          <span class="text-xs text-indigo-500 truncate">{{ book.series }}</span>
+          <span class="text-xs text-indigo-400 shrink-0">{{ formatDate(book.published_on) }}</span>
+        </div>
+        <p v-if="!books.length" class="text-sm text-indigo-600 italic">No books yet.</p>
+      </div>
+    </section>
+
     <section v-if="isAdmin">
       <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Admin</h2>
       <div class="rounded-lg border border-amber-700/40 bg-amber-950/20 p-4 space-y-3">
