@@ -1,1 +1,0 @@
-import{f as i,B as r}from"./DmwxpYTt.js";const{items:t,initialized:e,init:n}=i(r,{orderByField:"release_order"});function a(){async function o(){e.value||await n()}return{books:t,initialized:e,load:o}}export{a as u};

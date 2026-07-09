@@ -1,1 +1,0 @@
-import{ag as s,k as u,ah as o,ai as i}from"./CsLG5Ddc.js";const c=s(async()=>{let e,t;const{currentUser:a,waitForAuth:r}=u();if([e,t]=o(()=>r()),await e,t(),!a.value)return i("/")});export{c as default};
