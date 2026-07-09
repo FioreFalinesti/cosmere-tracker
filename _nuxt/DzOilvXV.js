@@ -1,0 +1,1 @@
+import{_ as s,c as o,a as t,o as n}from"./CsLG5Ddc.js";const a={};function c(r,e){return n(),o("div",null,[...e[0]||(e[0]=[t("h1",{class:"text-3xl font-bold text-blue-50 mb-1"},"Magic Systems",-1),t("p",{class:"text-indigo-400"},"Coming soon",-1)])])}const i=s(a,[["render",c]]);export{i as default};
