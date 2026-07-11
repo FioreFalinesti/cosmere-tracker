@@ -55,8 +55,8 @@ const { load } = useCosmere()
 const { planets, init: initPlanets, nodeData, computeOrbitRadii } = usePlanetSettings()
 const { systems, init: initSystems } = useSystemSettings()
 const { entities, init: initEntities } = useEntitySettings()
-const { editPositions, zoomTarget, orbitEventPreview } = useMapState()
-const { init: initEvents, currentEvent } = useTimelineEvents()
+const { editPositions, orbitEventPreview } = useMapState()
+const { init: initEvents, initCurrentEvent, currentEvent, zoomToEvent } = useTimelineEvents()
 
 await load()
 await initPlanets()
@@ -64,19 +64,15 @@ await initSystems()
 await initEntities()
 await initEvents()
 
-// Shift camera focus to wherever the timeline scrubber currently points —
-// an event's system/planet link now drives "where are we looking", not
-// visibility. Events with neither field leave the camera untouched. An event
-// with both links defaults to focusing the specific planet, but can opt into
-// framing the whole system instead via zoom_scope (e.g. "arrives in the
-// system" reads better zoomed out than snapped to one planet in it).
-watch(currentEvent, ev => {
-  if (!ev) return
-  if (ev.zoom_scope === 'map') zoomTarget.value = { type: 'map' }
-  else if (ev.zoom_scope === 'system' && ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
-  else if (ev.planet_slug) zoomTarget.value = { type: 'planet', slug: ev.planet_slug }
-  else if (ev.system_slug) zoomTarget.value = { type: 'system', slug: ev.system_slug }
-}, { immediate: true })
+// Focus the camera on wherever the persisted timeline scrubber position
+// points, once, at load — subsequent event selection no longer moves the
+// camera on its own; that now only happens via the timeline's explicit
+// "Go To" action (see TimelineListUi.vue), so browsing events doesn't yank
+// the map around. initCurrentEvent() is idempotent and also called by the
+// timeline sidebar, but must run here first so currentEvent already reflects
+// the persisted slug before this reads it.
+initCurrentEvent()
+if (currentEvent.value) zoomToEvent(currentEvent.value.slug)
 
 function planetSize(p) {
   return bodyVisualSize(p.size_multiplier)

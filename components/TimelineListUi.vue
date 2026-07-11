@@ -5,27 +5,38 @@
       :items="timelineItems"
       :model-value="currentEvent?.slug"
       :reverse="timelineNewestFirst"
-      size="sm"
+      size="xs"
       class="px-2"
     >
       <template #indicator="{ item }">
         <button
           type="button"
-          class="w-full h-full rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+          class="w-full h-full rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent-400 flex items-center justify-center"
+          :style="item.planetColor ? { background: item.planetColor } : {}"
           :aria-label="`Select ${item.title || 'event'}`"
           @click="setCurrentEvent(item.value)"
-        />
+        >
+          <UIcon v-if="item.bookIcon" :name="item.bookIcon" class="w-3 h-3" :style="item.planetColor ? { color: darkenHex(item.planetColor) } : {}" />
+        </button>
       </template>
       <template #title="{ item }">
-        <div
-          class="cursor-pointer outline-none rounded focus-visible:ring-2 focus-visible:ring-accent-400"
-          role="button"
-          tabindex="0"
-          @click="setCurrentEvent(item.value)"
-          @keydown.enter.prevent="setCurrentEvent(item.value)"
-          @keydown.space.prevent="setCurrentEvent(item.value)"
-        >
-          {{ item.title }}
+        <div class="flex items-center gap-2">
+          <div
+            class="cursor-pointer outline-none rounded focus-visible:ring-2 focus-visible:ring-accent-400"
+            role="button"
+            tabindex="0"
+            @click="setCurrentEvent(item.value)"
+            @keydown.enter.prevent="setCurrentEvent(item.value)"
+            @keydown.space.prevent="setCurrentEvent(item.value)"
+          >
+            {{ item.title }}
+          </div>
+          <button
+            v-if="item.hasZoomTarget && item.value === currentEvent?.slug"
+            type="button"
+            class="text-xs text-accent-400 hover:text-accent-300 transition-colors cursor-pointer shrink-0"
+            @click="zoomToEvent(item.value)"
+          >Go To</button>
         </div>
       </template>
       <template #description="{ item }">
@@ -60,16 +71,37 @@
 </template>
 
 <script setup>
-const { orderedEvents, init: initEvents, currentEvent, resolvedYearStart, resolvedYearEnd, initCurrentEvent, setCurrentEvent } = useTimelineEvents()
+import { darkenHex } from '~/utils/colorUtils'
+
+// Overrides the Nuxt UI Timeline indicator's default solid `bg-elevated`
+// fill (and the active/completed color-variant fill on top of it) with a
+// hollow ring, for events with no linked planet to draw a color from — `!`
+// is needed since those state-variant fills are compiled later and would
+// otherwise win over a plain unprefixed background utility.
+const HOLLOW_INDICATOR_CLASSES = 'bg-transparent border border-surface-400 group-data-[state=active]:!bg-transparent group-data-[state=completed]:!bg-transparent group-data-[state=active]:!text-muted group-data-[state=completed]:!text-muted'
+
+const { orderedEvents, init: initEvents, currentEvent, resolvedYearStart, resolvedYearEnd, initCurrentEvent, setCurrentEvent, zoomToEvent } = useTimelineEvents()
 const { timelineNewestFirst } = useTimelinePrefs()
 const { entities, init: initEntities } = useEntitySettings()
+const { books, load: loadBooks } = useCosmere()
+const { planets, init: initPlanets } = usePlanetSettings()
 
 await initEvents()
 initCurrentEvent()
 initEntities()
+loadBooks()
+initPlanets()
 
 function entityFor(slug) {
   return entities.value.find(e => e.slug === slug)
+}
+
+function bookIcon(slug) {
+  return books.value.find(b => b.slug === slug)?.icon ?? null
+}
+
+function planetColor(slug) {
+  return planets.value.find(p => p.slug === slug)?.color ?? null
 }
 
 function entityName(slug) {
@@ -95,13 +127,20 @@ const sortedEvents = computed(() =>
 // so it has to track `timelineNewestFirst` to stay correct once we've
 // already reversed the array ourselves for display order.
 const timelineItems = computed(() =>
-  sortedEvents.value.map(ev => ({
-    value: ev.slug,
-    date: dateLabel(ev),
-    title: ev.title,
-    description: ev.description,
-    entitySlugs: ev.entity_slugs ?? [],
-    subEvents: ev.sub_events ?? [],
-  }))
+  sortedEvents.value.map(ev => {
+    const color = ev.planet_slug ? planetColor(ev.planet_slug) : null
+    return {
+      value: ev.slug,
+      date: dateLabel(ev),
+      title: ev.title,
+      description: ev.description,
+      entitySlugs: ev.entity_slugs ?? [],
+      subEvents: ev.sub_events ?? [],
+      bookIcon: ev.book_slug ? bookIcon(ev.book_slug) : null,
+      planetColor: color,
+      ui: color ? undefined : { indicator: HOLLOW_INDICATOR_CLASSES },
+      hasZoomTarget: ev.zoom_scope === 'map' || !!ev.system_slug || !!ev.planet_slug,
+    }
+  })
 )
 </script>

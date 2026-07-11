@@ -15,6 +15,7 @@ function ordinal(n) {
 }
 
 export function formatDate(dateStr) {
+  if (!dateStr) return '—'
   const [year, month, day] = dateStr.split('-').map(Number)
   return `${MONTHS[month - 1]} ${ordinal(day)}, ${year}`
 }

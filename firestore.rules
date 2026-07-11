@@ -23,7 +23,7 @@ service cloud.firestore {
 
     match /{collection}/{id} {
       allow read: if collection != 'admins';
-      allow write: if collection in ['planets', 'planetary_systems', 'entities', 'books', 'timeline_events']
+      allow write: if collection in ['planets', 'planetary_systems', 'entities', 'books', 'timeline_events', 'admin_notes']
         && isAdmin();
     }
   }

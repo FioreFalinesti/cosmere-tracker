@@ -225,12 +225,14 @@ export function useTimelineEvents() {
   function setCurrentEvent(slug) {
     currentEventSlug.value = slug
     try { localStorage.setItem(CURRENT_EVENT_KEY, slug) } catch {}
+  }
 
-    // Re-clicking the event that's already current wouldn't otherwise change
-    // currentEventSlug/currentEvent's value, so pages/index.vue's reactive
-    // watch on currentEvent (used for the initial-load zoom) wouldn't fire —
-    // apply the zoom directly here so every click re-focuses the camera,
-    // whether or not the selection actually changed.
+  // Moves the map camera to wherever the given event points — split out from
+  // setCurrentEvent so selecting an event (e.g. clicking it in the timeline
+  // list) no longer moves the camera on its own; callers now trigger this
+  // explicitly (the timeline's "Go To" action), plus pages/index.vue calls it
+  // once at load to focus the persisted current event.
+  function zoomToEvent(slug) {
     const ev = events.value.find(e => e.slug === slug)
     if (!ev) return
     const { zoomTarget } = useMapState()
@@ -306,7 +308,7 @@ export function useTimelineEvents() {
   return {
     events, init, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, computeOrder,
     orderedEvents, sortedByYear, currentEvent, currentEventSlug, eventYear, resolvedYearStart, resolvedYearEnd,
-    isReached, isEventTriggerReached, initCurrentEvent, setCurrentEvent,
+    isReached, isEventTriggerReached, initCurrentEvent, setCurrentEvent, zoomToEvent,
     timelineDraftToPatch, emptyTimelineDraft,
   }
 }

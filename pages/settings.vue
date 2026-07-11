@@ -97,7 +97,14 @@
     </section>
 
     <section v-if="isAdmin" class="mb-10">
-      <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest mb-4">Books</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-indigo-400 uppercase tracking-widest">Books</h2>
+        <div class="flex items-center gap-2">
+          <input v-model="bulkIcon" type="text" placeholder="i-lucide-book-open"
+            class="bg-surface-700 border border-surface-600 rounded px-2 py-1 text-xs text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors w-36" />
+          <button type="button" class="text-xs text-indigo-400 hover:text-blue-100 transition-colors" :disabled="!bulkIcon.trim()" @click="applyBulkIcon">Apply to all</button>
+        </div>
+      </div>
       <div class="space-y-1">
         <div
           v-for="book in books"
@@ -105,9 +112,12 @@
           class="flex items-center gap-3 py-1.5 border-b border-surface-700 last:border-b-0"
         >
           <span class="text-xs font-mono text-indigo-400 w-8 shrink-0">#{{ book.release_order }}</span>
+          <UIcon v-if="book.icon" :name="book.icon" class="shrink-0 text-blue-100" />
           <span class="flex-1 text-sm text-blue-100 truncate">{{ book.title }}</span>
           <span class="text-xs text-indigo-500 truncate">{{ book.series }}</span>
           <span class="text-xs text-indigo-400 shrink-0">{{ formatDate(book.published_on) }}</span>
+          <input :value="book.icon" @change="setBookIcon(book.slug, $event.target.value)" type="text" placeholder="icon"
+            class="bg-surface-700 border border-surface-600 rounded px-2 py-1 text-xs text-blue-100 placeholder-indigo-600 focus:outline-none focus:border-accent-500 transition-colors w-36 shrink-0" />
         </div>
         <p v-if="!books.length" class="text-sm text-indigo-600 italic">No books yet.</p>
       </div>
@@ -145,7 +155,7 @@ definePageMeta({ middleware: 'auth' })
 
 const { systems, init, cloneSystem } = useSystemSettings()
 const { planets, init: initPlanets } = usePlanetSettings()
-const { books, load: loadBooks } = useCosmere()
+const { books, load: loadBooks, setBookIcon } = useCosmere()
 const { entities, init: initEntities } = useEntitySettings()
 const { orderedEvents, init: initEvents, addTimelineEvent, updateTimelineEvent, deleteTimelineEvent, moveEvent, resortByYear, resolvedYearStart, resolvedYearEnd, timelineDraftToPatch, emptyTimelineDraft } = useTimelineEvents()
 const { timelineNewestFirst, initTimelineOrder, setTimelineNewestFirst } = useTimelinePrefs()
@@ -197,6 +207,12 @@ async function confirmDeleteEvent(ev) {
 
 function bookTitle(slug) {
   return books.value.find(b => b.slug === slug)?.title ?? slug
+}
+
+const bulkIcon = ref('')
+async function applyBulkIcon() {
+  if (!isAdmin.value || !bulkIcon.value.trim()) return
+  await Promise.all(books.value.map(b => setBookIcon(b.slug, bulkIcon.value.trim())))
 }
 
 function entityName(slug) {

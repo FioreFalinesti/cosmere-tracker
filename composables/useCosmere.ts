@@ -7,15 +7,19 @@ export interface Book {
   published_on: string
   release_order: number
   planets: string[]
+  icon: string | null
 }
 
 interface CosmereStore {
   books: Ref<Book[]>
   initialized: Ref<boolean>
   load: () => Promise<void>
+  setBookIcon: (slug: string, icon: string) => Promise<void>
 }
 
 const { items: books, initialized, init: initBooksCollection } = firestoreCollectionLoader(BOOKS_COLLECTION, { orderByField: 'release_order' })
+
+const setBookIcon = makeFieldSetter(books, BOOKS_COLLECTION, 'icon', v => v || null)
 
 export function useCosmere(): CosmereStore {
   async function load() {
@@ -23,5 +27,5 @@ export function useCosmere(): CosmereStore {
     await initBooksCollection()
   }
 
-  return { books, initialized, load }
+  return { books, initialized, load, setBookIcon }
 }
