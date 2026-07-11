@@ -1,0 +1,1 @@
+import{ah as s,l as u,ai as o,aj as i}from"./Bi6gxQUs.js";const c=s(async()=>{let e,t;const{currentUser:a,waitForAuth:r}=u();if([e,t]=o(()=>r()),await e,t(),!a.value)return i("/")});export{c as default};
